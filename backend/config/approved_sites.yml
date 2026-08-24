@@ -2,10 +2,9 @@
 # time), and the citation validator (display time). Three independent gates on
 # the same list, because F-15 is the product's central promise.
 #
-# CHANGING THIS FILE CHANGES THE PRODUCT'S CENTRAL PROMISE.
-# The list starts at five sites and is expected to grow. Adding or removing a
-# domain requires a PRD update (sections 5.3 and 6.8), a crawl, and a review
-# of every curated answer citing a removed site. It is not a config tweak.
+# Version 1.0: FIXED at these five sites. Allowlist growth (admin add → crawl,
+# F-42) is post-v1.0. Scheduled crawl of these five is in scope (F-43).
+# Changing this file in v1.0 requires a PRD update — not a routine config tweak.
 
 sites:
   - domain: isadanislam.org

@@ -1,6 +1,6 @@
 # **Frontend Framework Decision — Nuxt 3 (SPA)**
 
-**Project:** Tanya Iman \- Indonesian Faith & Emotional Q&A Assistant
+**Project:** Tanya Iman — Indonesian Theology Q&A (Nuxt frontend)
 
 **Status:** **Decided** — August 2026
 
@@ -8,7 +8,7 @@
 
 **Applies to:** the seeker application (`web/app/`) and the editorial admin portal (`web/admin/`)
 
-> The Aug 2026 product brief assumed React. This decision uses Nuxt 3 instead. The requirement it was written to satisfy — *one codebase that can be served as a WordPress widget or wrapped as an Android app* — is unchanged and is met at least as well by Nuxt.
+> The Aug 2026 product brief assumed React. **This decision uses Nuxt 3 instead** and is confirmed as product direction. The requirement it was written to satisfy — *one codebase that can be served as a WordPress widget or wrapped as an Android app* — is unchanged and is met by Nuxt.
 
 ---
 

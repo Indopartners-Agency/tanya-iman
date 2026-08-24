@@ -8,21 +8,34 @@
 # recorded in the PR (AI Spec section 14).
 
 greeting: |-
-  Selamat datang. Silakan tanyakan apa pun yang ada di hati Anda — tentang Allah, Isa Al-Masih, Kitab Suci, atau apa yang sedang Anda alami.
+  Selamat datang. Silakan tanyakan apa pun tentang iman — Allah, Isa Al-Masih, Kitab Suci, atau pertanyaan iman lainnya.
 
 source_note: "Jawaban disusun berdasarkan Kitab Suci."
 
-# F-10 — out of scope
+# F-10 — out of scope (irrelevant)
 refusal: |-
-  Maaf, saya hanya dapat menjawab pertanyaan seputar iman dan pergumulan hati.
+  Maaf, saya hanya dapat menjawab pertanyaan seputar iman — tentang Allah, Isa Al-Masih, Kitab Suci, atau pertanyaan iman lainnya.
 
-  Silakan bertanya tentang Allah, Isa Al-Masih, Kitab Suci, atau apa pun yang sedang Anda rasakan.
+  Silakan ajukan pertanyaan tentang iman yang ingin Anda ketahui.
 
-# F-29 — retrieval found nothing above threshold
+# F-29 — retrieval found nothing above threshold (template, not AI)
 no_grounding: |-
   Maaf, saya belum memiliki bahan yang cukup untuk menjawab pertanyaan itu dengan baik.
 
   Pertanyaan Anda sudah kami catat, agar tim kami dapat menyiapkan jawabannya. Sementara itu, Anda boleh bertanya tentang hal lain yang sedang Anda pikirkan.
+
+# F-44 — emotional-only deferral (template, not AI)
+# {contact_name} and {contact_number} come from admin system config (F-45).
+emotional_deferral: |-
+  [PLACEHOLDER — TIDAK BOLEH DIPAKAI DI STAGING/PRODUKSI]
+
+  Terima kasih sudah menyampaikan apa yang Anda rasakan. Hal itu penting.
+
+  Layanan ini menjawab pertanyaan tentang iman dari tulisan yang tersedia, dan tidak membahas topik emosional sebagai bahan jawaban.
+
+  Jika Anda ingin berbicara dengan seseorang, silakan hubungi {contact_name}: {contact_number}.
+
+  Jika nanti Anda punya pertanyaan tentang Allah, Isa Al-Masih, atau Kitab Suci, saya siap membantu dari bahan yang kami miliki.
 
 # F-28 — answer failed validation twice
 fallback: |-

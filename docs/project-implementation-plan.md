@@ -14,11 +14,11 @@ This document is the engineering build plan: what gets built, in what order, wit
 
 It is not a schedule. There are no dates and no effort estimates here, because both depend on team size and on the resolution of the blocking dependencies in §6 — several of which are editorial rather than technical. Sequencing and gates are what this document guarantees.
 
-**Phase mapping to the PRD release plan:**
+**Phase mapping to the PRD release plan (nine phases, 1:1):**
 
 | PRD phase | PIP phases |
 |---|---|
-| P1 Prototype *(complete)* | — |
+| P1 Prototype *(complete)* | — (historical) |
 | P2 Production foundation | Phase 1, Phase 2 |
 | P3 Identity | Phase 3 |
 | P4 Corpus | Phase 4 |
@@ -27,6 +27,8 @@ It is not a schedule. There are no dates and no effort estimates here, because b
 | P7 Distribution | Phase 7 |
 | P8 Pilot | Phase 8 |
 | P9 Launch | Phase 9 |
+
+Allowlist growth (F-42) is **post-v1.0**, after Phase 9.
 
 ---
 
@@ -82,7 +84,7 @@ Copy `backend/.env.example` → `backend/.env` before the first run.
 |---|---|---|
 | `backend/config/prompts/*.txt` | Classifier, composer, repair, judge prompts | Composer prompt requires editorial sign-off before P5 ships |
 | `backend/config/responses.id.yml` | Refusal, no-grounding, rate-limit, error copy | Editorial sign-off before P5 |
-| `backend/config/crisis_scripts.id.yml` | Crisis response and helpline numbers | **Blocking.** Pastoral sign-off; numbers verified. No placeholder may reach staging |
+| `backend/config/crisis_scripts.id.yml` | Crisis response and helpline numbers | **Blocking.** Editorial sign-off; numbers verified. No placeholder may reach staging |
 | `backend/config/approved_sites.yml` | The five allowed domains | Changing it changes the product's core promise; requires a PRD update |
 | `backend/tests/benchmark/questions.yml` | The 120-question benchmark | Must exist before Phase 5 can be evaluated |
 
@@ -386,7 +388,7 @@ Manual verification on staging with real test numbers: SMS sign-in on an Android
 
 ### **Phase 4: Corpus — Crawl, Chunk, Embed**
 
-**Goal:** Every approved site is crawled, chunked, embedded, and searchable. Version 1.0 starts with five sites; the same pipeline is what a sixth site goes through later (F-41 – F-43).
+**Goal:** Every approved site is crawled, chunked, embedded, and searchable. Version 1.0 is the fixed five sites; F-42 (admin add site → crawl) is post-v1.0. Scheduled crawl of the five is in scope (F-43).
 
 **Dependencies:** Written confirmation that crawling and content reuse are permitted (PRD §12).
 
@@ -488,8 +490,9 @@ Verification: a full crawl of all five sites completes, `/api/health` reports a 
 
 **Dependencies — all blocking:**
 - `crisis_scripts.id.yml` authored, editorially approved, helpline numbers verified (**AI Spec OI-2**)
+- Emotional-deferral template + contact number configured (**PRD OD-7 / F-44–F-45**)
 - Composer prompt editorially signed off (**AI Spec OI-3**)
-- LLM provider Zero Data Retention terms confirmed in writing (**AI Spec OI-6**)
+- LLM provider Zero Data Retention terms confirmed in writing (**AI Spec OI-6 / PIP B3**)
 - The 120-question benchmark set built by a native Indonesian speaker (**AI Spec OI-7**)
 - OI-1 corpus terminology conflict resolved
 - Phase 4 complete
@@ -815,7 +818,7 @@ Reset procedure that clears `users`, `sessions`, `questions`, `likes`, and clust
 
 **Task 8.3 — Load sanity check**
 
-50 concurrent askers for 10 minutes against staging. Confirm p95 stays inside 9 s, no Firestore contention on the rate-limit counter, and Cloud Run scales without errors.
+50 concurrent askers for 10 minutes against staging. Confirm average answer time stays inside **5 s** (PRD K5), no Firestore contention on the rate-limit counter, and Cloud Run scales without errors.
 
 **Task 8.4 — Run the pilot**
 
@@ -827,7 +830,7 @@ Per [Pilot Plan](pilot/pilot-plan.md). Feedback captured on the templates in `do
 |---|---|
 | Monitoring | Every alert deliberately triggered once and confirmed to fire |
 | Reset | Verified to clear user data and preserve corpus |
-| Load | p95 < 9 s at 50 concurrent |
+| Load | Average answer time < 5 s at 50 concurrent |
 | Pilot | Exit criteria in the Pilot Plan |
 
 ---
@@ -893,7 +896,7 @@ The 120-question set from AI Spec §13, run in CI on any change to prompts, vali
 | Fabricated citations | 0 — blocks release |
 | Refusal accuracy | ≥95% |
 | False refusal | ≤5% |
-| p95 latency | < 9 s |
+| Average latency | < 5 s |
 
 ### **4.4 Manual E2E (per phase, on staging)**
 
@@ -921,11 +924,11 @@ Reviewed at the end of every phase, and formally before Phase 8 and Phase 9.
 - Guest identity is not derivable from device attributes and is not linked to a phone identity without explicit conversion
 - Firestore rules deny all client access; the backend is the only writing principal
 - Admin role checks exist in both the route dependency and the service layer, and the service-layer check is tested directly
-- LLM provider Zero Data Retention terms confirmed in writing before the first real question is sent
+- LLM provider Zero Data Retention terms confirmed in writing before the first real question is sent (PIP B3)
 - `frame-ancestors` lists exactly the five approved domains
 - Every destructive admin action writes to the audit log before executing
 - Retention purge runs, and is verified to delete only what it should
-- Crisis scripts contain no placeholder and every helpline number has a recorded verification date
+- Crisis and emotional-deferral templates contain no placeholder; numbers have recorded verification dates
 
 ---
 
@@ -935,15 +938,16 @@ Each of these stops a phase from starting, and none of them is an engineering ta
 
 | # | Dependency | Blocks | Owner |
 |---|---|---|---|
-| B1 | Crisis script authored, approved, helplines verified | Phase 5 | Pastoral |
-| B2 | Composer prompt and refusal copy editorially signed off | Phase 5 | Editorial |
-| B3 | LLM provider ZDR terms in writing | Phase 5 | Engineering + Legal |
+| B1 | Crisis template authored, approved, helplines verified | Phase 5 | Editorial |
+| B2 | Composer prompt and refusal / template copy editorially signed off | Phase 5 | Editorial |
+| B3 | LLM provider Zero Data Retention terms confirmed in writing | Phase 5 | Client / Legal + Engineering |
 | B4 | 120-question benchmark set built in Indonesian | Phase 5 evaluation | Editorial + Engineering |
 | B5 | Written confirmation that crawling and content reuse are permitted | Phase 4 | Product |
 | B6 | OTP provider account and cost ceiling agreed (PRD OD-1) | Phase 3 | Product |
 | B7 | Google Play Developer account | Phase 7 | Product |
 | B8 | Corpus terminology conflict resolved (AI Spec OI-1) | Phase 5 | Editorial + Engineering |
-| B9 | Privacy Policy published at a stable URL | Phase 1 (link) and Phase 7 (Play listing) | Product + Legal |
+| B9 | Privacy Policy published at a stable URL | Phase 2 (link) and Phase 7 (Play) | Product + Legal |
+| B10 | Emotional-deferral contact number + template approved (PRD OD-7) | Phase 5 | Editorial |
 
 ---
 

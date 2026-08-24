@@ -1,7 +1,7 @@
 # Pilot Session Log — Tanya Iman
 
 **Session date:** _________________ · **Facilitator:** _________________
-**Participant ID:** _________________ · **Role:** Seeker / Admin / Pastoral reviewer
+**Participant ID:** _________________ · **Role:** Seeker / Admin / Editorial reviewer
 **Channel:** Android app / WordPress widget / Web
 **Device & OS:** _________________ · **Network:** WiFi / 4G / 3G
 

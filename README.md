@@ -1,10 +1,10 @@
 # Tanya Iman
 
-An Indonesian-language theology Q&A assistant for Muslim seekers. A user asks about Allah, Isa Al-Masih, the Holy Scripture, or a faith-related question, and receives a 25–250 word answer drawn only from a crawled corpus of approved religious-dialogue websites (five to start, designed to grow), with links back to the source articles. Every chat is handled by the AI — there is no human agent, and this is not a counselling product.
+An Indonesian-language theology Q&A assistant for Muslim seekers. A user asks about Allah, Isa Al-Masih, the Holy Scripture, or a faith-related question, and receives a 25–250 word answer drawn only from a crawled corpus of **five** approved religious-dialogue websites (fixed in v1.0), with links back to the source articles. Answers are empathetic in tone but do not discuss emotional subjects as topics — emotional-only questions receive a contact template. Every chat is handled by the AI or by fixed templates; there is no human agent in the chat.
 
-It ships as an Android app and as an embedded widget on WordPress sites, from one Nuxt codebase, with an editorial admin portal behind it.
+It ships as an Android app and as an embedded widget on WordPress sites, from one **Nuxt** codebase, with an editorial admin portal behind it.
 
-**Documentation is the source of truth.** Start at [`docs/README.md`](docs/README.md). This file only covers getting the repository running.
+**Documentation is the source of truth.** Start at [`docs/README.md`](docs/README.md) and [`docs/prd.md`](docs/prd.md). This file only covers getting the repository running.
 
 ## Status
 
@@ -78,12 +78,12 @@ The suite covers the guard ordering that safety depends on, word counting on bot
 
 ## Before this can go anywhere real
 
-Blocking dependencies live in [PIP §6](docs/project-implementation-plan.md). The two that block the earliest:
+Blocking dependencies live in [PIP §6](docs/project-implementation-plan.md). The earliest gates:
 
-1. **The crisis script** (`backend/config/crisis_scripts.id.yml`) is a placeholder with fake helpline numbers. Staging and production boot is blocked until the editorial owner approves the copy and every number has been called and confirmed.
-2. **Zero Data Retention terms** must be confirmed in writing before any real LLM provider is wired in. A provider that cannot contract for ZDR is disqualified regardless of quality or price.
-
-Crawl permission for the approved sites is the third: the RAG index cannot be built until we may store that text.
+1. **The crisis template** (`backend/config/crisis_scripts.id.yml`) is a placeholder with fake helpline numbers. Staging and production boot is blocked until the editorial owner approves the copy and every number has been called and confirmed.
+2. **Emotional-deferral contact number and template** (F-44 / F-45, PIP B10) must be approved before Phase 5.
+3. **Zero Data Retention terms** must be confirmed in writing before any real LLM provider is wired in. A provider that cannot contract for ZDR is disqualified (PIP B3).
+4. **Crawl permission** for the five approved sites — the RAG index cannot be built until we may store that text.
 
 ## Contributing
 

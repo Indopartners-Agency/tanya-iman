@@ -20,7 +20,7 @@ Define a clear, low-friction admin experience for the editorial team:
 
 This document complements:
 
-- [Product Requirements Document](prd.md) — F-19 through F-23, F-34 through F-37
+- [Product Requirements Document](prd.md) — F-19 through F-23, F-34 through F-37, F-44–F-45
 - [Technical Design Document](tdd.md) §2.8, §4.2 — auth, roles, API surface
 - [AI Answer Engine Specification](ai-answer-engine-specification.md) §11, §12 — curated answers and clustering
 - [Project Implementation Plan](project-implementation-plan.md) Phase 6 — implementation scope
@@ -51,8 +51,8 @@ This document complements:
 | 6 | **Editor Jawaban** | Write and publish a curated answer (F-23) | editor, super_admin |
 | 7 | **Pertanyaan Serupa** (Clusters) | Similar-question frequency (F-22) | all |
 | 8 | **Kekosongan Materi** (Content Gaps) | Questions the corpus could not answer | all |
-| 9 | **Antrean Tinjauan** (Review Queue) | Ambiguous classifications, validator failures, crisis events | all |
-| 10 | **Pengaturan** (Settings) | System config, admin accounts, ingestion | super_admin |
+| 9 | **Antrean Tinjauan** (Review Queue) | Ambiguous classifications, validator failures, crisis events, emotional-deferral samples | all |
+| 10 | **Pengaturan** (Settings) | System config, contact number (F-45), admin accounts, ingestion | super_admin |
 
 Navigation: left sidebar on desktop, top menu on tablet. The role badge (`editor`, `reviewer`, `super_admin`) is always visible in the header, with the signed-in email beside it.
 
@@ -284,11 +284,12 @@ One worklist, three sources:
 
 | Source | Why it needs a human |
 |---|---|
-| Ambiguous classifications | To refine the classifier prompt (AI Spec §4.2, risk R2) |
+| Ambiguous classifications | To refine the classifier (theology vs emotional-only vs irrelevant) |
 | Validator failures | To catch prompt drift or a model change before K4 slips |
-| Crisis events | Monthly precision review (K9) — read the message and confirm the routing was right |
+| Crisis events | Monthly precision review (K9) — confirm routing was right |
+| Emotional-deferral samples | Confirm F-44 routing and that contact number display is correct |
 
-Crisis events are visible to all admin roles but carry a standing notice that these are people in distress and the records are not to leave the portal.
+Crisis and emotional-deferral events are visible to all admin roles but carry a standing notice that these records are sensitive and must not leave the portal.
 
 Each item can be marked reviewed with an optional note. Reviewed items stay searchable.
 
@@ -298,9 +299,10 @@ Each item can be marked reviewed with an optional note. Reviewed items stay sear
 
 | Section | Contents |
 |---|---|
-| **Sistem** | `retention_months`, `rate_limit_per_hour`, `similarity_threshold` — each with its current value, its effect described in plain Indonesian, and the last change with who made it |
+| **Sistem** | `retention_months`, `rate_limit_per_hour`, `similarity_threshold` — each with current value, plain-Indonesian effect, last change |
+| **Kontak dukungan emosional (F-45)** | Contact name, phone number (tappable format), and optional short intro line used by the emotional-deferral template (F-44). Changing the number requires confirmation and writes an audit entry. No placeholder may be saved to staging/production |
 | **Akun admin** | List, create, deactivate. No self-registration exists |
-| **Materi** | Last ingestion run, articles seen, chunks written, and a **Jalankan sekarang** trigger |
+| **Materi** | Last ingestion run, articles seen, chunks written, and a **Jalankan sekarang** trigger (five approved sites in v1.0; adding sites is post-v1.0 / F-42) |
 | **Jejak audit** | The audit log, filterable by actor, action, and date |
 
 Changing `similarity_threshold` is presented with an explicit warning that it changes what the assistant is willing to answer, and a link to the benchmark results. It is a tuning parameter with product consequences, and the settings screen should not present it as a preference.

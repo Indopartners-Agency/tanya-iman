@@ -2,8 +2,13 @@
   "_note": "Strings under `shared` are byte-identical to backend/config/responses.id.yml and are asserted by backend/tests/test_copy_parity.py. Strings under `ui` are client-only. Indonesian is the only locale; there is no English fallback, because a half-translated faith conversation reads worse than none.",
 
   "shared": {
-    "greeting": "Selamat datang. Silakan tanyakan apa pun yang ada di hati Anda — tentang Allah, Isa Al-Masih, Kitab Suci, atau apa yang sedang Anda alami.",
+    "greeting": "Selamat datang. Silakan tanyakan apa pun tentang iman — Allah, Isa Al-Masih, Kitab Suci, atau pertanyaan iman lainnya.",
     "source_note": "Jawaban disusun berdasarkan Kitab Suci.",
+    "refusal": "Maaf, saya hanya dapat menjawab pertanyaan seputar iman — tentang Allah, Isa Al-Masih, Kitab Suci, atau pertanyaan iman lainnya.\n\nSilakan ajukan pertanyaan tentang iman yang ingin Anda ketahui.",
+    "no_grounding": "Maaf, saya belum memiliki bahan yang cukup untuk menjawab pertanyaan itu dengan baik.\n\nPertanyaan Anda sudah kami catat, agar tim kami dapat menyiapkan jawabannya. Sementara itu, Anda boleh bertanya tentang hal lain yang sedang Anda pikirkan.",
+    "emotional_deferral": "[PLACEHOLDER — TIDAK BOLEH DIPAKAI DI STAGING/PRODUKSI]\n\nTerima kasih sudah menyampaikan apa yang Anda rasakan. Hal itu penting.\n\nLayanan ini menjawab pertanyaan tentang iman dari tulisan yang tersedia, dan tidak membahas topik emosional sebagai bahan jawaban.\n\nJika Anda ingin berbicara dengan seseorang, silakan hubungi {contact_name}: {contact_number}.\n\nJika nanti Anda punya pertanyaan tentang Allah, Isa Al-Masih, atau Kitab Suci, saya siap membantu dari bahan yang kami miliki.",
+    "fallback": "Maaf, saya belum dapat menyusun jawaban yang layak untuk pertanyaan ini. Tim kami akan meninjaunya.\n\nSilakan coba menanyakannya dengan cara lain, atau tanyakan hal lain.",
+    "rate_limit": "Anda telah mencapai batas 30 pertanyaan dalam satu jam. Silakan kembali lagi dalam {minutes} menit.",
     "error": "Maaf, terjadi gangguan saat menyiapkan jawaban.",
     "identity": "Saya Tanya Iman, sebuah layanan yang menjawab pertanyaan berdasarkan tulisan dari beberapa situs dialog keagamaan berbahasa Indonesia. Saya bukan manusia, dan saya hanya menjawab dari bahan-bahan tersebut.",
     "input_too_long": "Pertanyaan Anda terlalu panjang. Mohon persingkat menjadi paling banyak 1.000 karakter.",
@@ -12,7 +17,7 @@
 
   "ui": {
     "app_name": "Tanya Iman",
-    "tagline": "Ruang untuk bertanya tentang iman dan pergumulan hati.",
+    "tagline": "Ruang untuk bertanya tentang iman.",
 
     "login_title": "Selamat datang di Tanya Iman",
     "login_subtitle": "Pilih cara masuk untuk mulai bertanya.",
@@ -48,6 +53,9 @@
     "session_expired": "Percakapan ini sudah berakhir. Silakan mulai percakapan baru.",
     "session_new": "Mulai percakapan baru",
     "network_error": "Koneksi terputus. Silakan coba lagi.",
-    "retry": "Coba lagi"
+    "retry": "Coba lagi",
+
+    "privacy": "Kebijakan Privasi",
+    "logout": "Keluar"
   }
 }

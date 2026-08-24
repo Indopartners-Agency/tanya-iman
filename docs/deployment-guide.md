@@ -248,7 +248,7 @@ Before the first production deploy:
 - [ ] Production GCP project created, separate from staging
 - [ ] Firestore in `asia-southeast2` with composite and vector indexes deployed
 - [ ] Every secret in §3 created in the production project
-- [ ] `crisis_scripts.id.yml` contains approved copy and verified helpline numbers — **no placeholders** (PIP B1)
+- [ ] `crisis_scripts.id.yml` and emotional-deferral templates approved; numbers verified — **no placeholders** (PIP B1, B10)
 - [ ] LLM provider Zero Data Retention terms confirmed in writing (PIP B3)
 - [ ] `CORS_ORIGINS` lists every production frontend origin
 - [ ] `FRAME_ANCESTORS` lists exactly the five approved WordPress domains

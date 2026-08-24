@@ -10,7 +10,7 @@
 
 This is the operational guide for the corpus the answer engine depends on: how approved sites are crawled, chunked, embedded, and refreshed, and what to do when it goes wrong.
 
-The corpus starts at five sites and is designed to grow. Adding a sixth site is the same pipeline with one more row in the allowlist — not a new product, and not a prompt change. If the index is stale, thin, or contaminated with content from outside the allowlist, every guarantee in the [AI Answer Engine Specification](ai-answer-engine-specification.md) fails quietly rather than loudly.
+The corpus is **five sites in v1.0** (fixed allowlist). Scheduled crawl keeps those five current. Adding a sixth site via admin (F-42) is **post-v1.0**; the pipeline should remain ready for it. If the index is stale, thin, or contaminated with content from outside the allowlist, every guarantee in the [AI Answer Engine Specification](ai-answer-engine-specification.md) fails quietly rather than loudly.
 
 ---
 

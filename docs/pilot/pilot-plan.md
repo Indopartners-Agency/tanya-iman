@@ -23,7 +23,7 @@
 | Seekers — WordPress widget | 4–6 | |
 | Seekers — guest only, no sign-in | 3–5 | |
 | Editorial admins | 2–3 | |
-| Pastoral reviewer (answer quality) | 1 | |
+| Editorial reviewer (answer quality) | 1 | |
 
 Recruit seekers who reflect the actual audience described in PRD §4.1 — predominantly from a Muslim background, mobile-first, with genuine questions. A pilot run entirely by ministry staff asking questions they already know the answer to measures nothing.
 
@@ -53,13 +53,14 @@ Recruit seekers who reflect the actual audience described in PRD §4.1 — predo
 | **P9** | Seeker | Ask via the WordPress widget on a real page | Same answer as the app; widget resizes; links open in the top window |
 | **P10** | Seeker | Lose connection mid-question, then reconnect | Clear offline state; retry works without retyping |
 | **P11** | Team | Send the approved crisis test phrase | Scripted response with tappable helpline; no generation; excluded from topic counts |
+| **P11b** | Team | Send an emotional-only message (no theology question) | Emotional-deferral **template** with admin contact number; no generation; no Like |
 | **P12** | Team | Send 31 messages in one hour | 31st shows the countdown message |
 | **P13** | Admin | Filter last 7 days, find the top topic, read 10 questions | Completed unaided in under 10 minutes |
 | **P14** | Admin | Write and publish a curated answer for that topic | Live validation guides them; publish succeeds |
 | **P15** | Admin | Ask that topic's question in the app | The exact curated text is returned |
 | **P16** | Admin | Review the Content Gaps and Similar Questions views | Can name the top three unwritten subjects |
 | **P17** | Admin | Export the filtered question list as CSV | Downloads; contains no phone number |
-| **P18** | Pastoral reviewer | Read 20 sampled answers | Scores recorded on the AI Answer Quality Report template |
+| **P18** | Editorial reviewer | Read 20 sampled answers | Scores recorded on the AI Answer Quality Report template |
 
 ---
 
@@ -72,7 +73,7 @@ Recruit seekers who reflect the actual audience described in PRD §4.1 — predo
 | 4–6 | Seeker scenarios P9–P10 on the WordPress widget |
 | 6 | Team scenarios P11–P12 |
 | 7–8 | Admin scenarios P13–P17 |
-| 9 | Pastoral answer review P18 |
+| 9 | Editorial answer review P18 |
 | 10–12 | Buffer, defect fixes, retests |
 | 13 | Compile reports using the templates in this folder |
 | 14 | Go / no-go review |
@@ -98,7 +99,7 @@ Recruit seekers who reflect the actual audience described in PRD §4.1 — predo
 - Validator pass rate at display time is 100% across every answer produced during the pilot (K4).
 - Zero answers citing a domain outside the approved allowlist.
 - P18 editorial / theological review completed, with a written statement on whether the answers are acceptable to publish. **This is a judgment, not a metric, and it is the one that matters most.**
-- Answer latency p95 under 9 seconds across the pilot.
+- Answer latency average under 5 seconds across the pilot (PRD K5).
 - The admin scenarios P13–P16 were completed by an editor without engineering assistance.
 - A go / no-go recommendation recorded in the session log summary.
 
@@ -110,4 +111,4 @@ Recruit seekers who reflect the actual audience described in PRD §4.1 — predo
 |---|---|---|
 | [Pilot Session Log Template](pilot-session-log-template.md) | Facilitator | Per session |
 | [UX Feedback Report Template](ux-feedback-report-template.md) | Facilitator | Per participant |
-| [AI Answer Quality Report Template](ai-answer-quality-report-template.md) | Pastoral reviewer | Per batch of 20 answers |
+| [AI Answer Quality Report Template](ai-answer-quality-report-template.md) | Editorial reviewer | Per batch of 20 answers |

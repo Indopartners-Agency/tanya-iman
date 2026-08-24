@@ -109,7 +109,7 @@ Google Play's policies on religious content are not prohibitive, but they are sp
 | Field | Content |
 |---|---|
 | Title | Tanya Iman |
-| Short description | Jawaban atas pertanyaan iman dan pergumulan hati, dalam bahasa Indonesia |
+| Short description | Jawaban atas pertanyaan iman, dalam bahasa Indonesia |
 | Full description | States plainly: this is a question-and-answer service; answers are drawn from a specific set of Indonesian religious-dialogue websites; the sources are named; the app does not represent any government or official body; it is not a counselling service |
 | Category | Books & Reference *(not Lifestyle — the app is a reading and Q&A tool)* |
 | Content rating | Complete the questionnaire honestly, including the religious-content and user-generated-content questions |

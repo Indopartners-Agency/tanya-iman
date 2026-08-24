@@ -14,7 +14,7 @@ Tanya Iman is a **static frontend over a stateless answer service backed by a gr
 
 1. **The frontend must be a static artefact**, because the same build has to be served from a CDN, embedded in an iframe, and packaged into an Android binary. No server-rendered HTML at request time.
 2. **The answer path must be deterministic where it matters.** Content rules F-11 to F-15 are not prompt suggestions; they are validators that run after generation and can reject a model's output.
-3. **Nothing enters an answer that did not come from the crawled corpus.** Retrieval is not an optimisation for quality — it is the mechanism by which the product's central promise is kept. The allowlist starts at five sites and is designed to grow (F-41 – F-43).
+3. **Nothing enters a composed answer that did not come from the crawled corpus.** Retrieval is not an optimisation for quality — it is the mechanism by which the product's central promise is kept. The allowlist is **five sites in v1.0** (fixed). Growth via admin (F-42) is post-v1.0; scheduled crawl of the five sites is in scope (F-43).
 
 ```mermaid
 flowchart TB
@@ -143,7 +143,7 @@ The engine is a fixed pipeline, not an agent. There is no tool-calling loop and 
 
 ```
 Question (post-guards)
-  → Relevance_Classifier   — theology / faith-related, or refuse (F-9, F-10)
+  → Relevance_Classifier   — theology | emotional_only → F-44 template | irrelevant → refuse (F-9, F-10, F-44)
   → Topic_Resolver         — map to one of 13 topics + `lainnya`
   → Curated_Answer_Resolver— if the topic has an approved curated answer, return it (F-23)
   → Retriever              — vector search over article_chunks, top-k with threshold
@@ -482,7 +482,7 @@ All are mounted with `--set-secrets` at deploy time. No secret value appears as 
 ## **6\. Security & Compliance**
 
 * **Grounding is a security property, not just a quality one.** The retriever filters on the approved-site allowlist independently of the crawler's write-time filter, and the citation validator re-checks every URL against the same list before an answer is displayed. Three gates, because a fabricated theological claim attributed to a ministry site is the worst outcome this system can produce.
-* **Zero Data Retention.** LLM calls use an enterprise ZDR tier. If a provider cannot contract for ZDR, it cannot be used. This is checked at provider onboarding, not at incident time.
+* **Zero Data Retention.** LLM calls use an enterprise ZDR tier. If a provider cannot contract for ZDR, it cannot be used. Confirmed in writing before Phase 5 (PIP B3 / AI Spec OI-6).
 * **Phone numbers** are encrypted at rest with a key held in Secret Manager, looked up by HMAC rather than decryption, masked in every admin view (`+62 812 •••• 4471`), and never included in CSV export.
 * **Guest anonymity is real.** The anonymous identifier is Firebase's, is not derived from device attributes, and is not correlated with any phone identity unless the user explicitly converts.
 * **Admin access is enforced at the data layer.** Firestore security rules deny all client access; the backend is the only principal with write credentials. Role checks are duplicated in the route dependency and the service, so a routing mistake cannot become a privilege escalation.
@@ -497,7 +497,7 @@ All are mounted with `--set-secrets` at deploy time. No secret value appears as 
 
 | Signal | Where | Why |
 |---|---|---|
-| Answer latency p50/p95, split by `answer_source` | Cloud Monitoring | K5, and the earliest indicator of a retrieval or provider problem |
+| Answer latency (average), split by `answer_source` | Cloud Monitoring | K5 (&lt; 5 s average) |
 | Validator failure rate by rule code | Cloud Monitoring + `questions.validator_failures` | A rising F-12 failure rate means the prompt drifted or the model changed under us |
 | Refusal rate and no-grounding rate | Derived from `questions` | K1 and K7; a spike usually means the classifier or the index broke, not that users changed |
 | Crisis guard fires | Structured log + admin view | K9. Reviewed monthly |

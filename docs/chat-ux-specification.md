@@ -12,7 +12,9 @@
 
 Define the seeker-facing experience: the welcome screen, the three sign-in paths, the conversation, and every response state the answer engine can produce.
 
-This is a theology Q&A surface, not a counselling chat. There is no "talk to a person" control, no wait-for-agent state, and no volunteer presence. Every turn is handled by the AI.
+This is a theology Q&A surface for Muslim seekers. There is no counselling chat and no “talk to a person” control inside the conversation. Every turn is handled by the AI **or** by a fixed template (refusal, crisis, emotional deferral with admin-configured contact number, no-grounding).
+
+Answers that are composed must sound **empathetic** while staying on a faith/theology subject. Emotional-only questions never receive a composed answer.
 
 This document complements:
 
@@ -30,7 +32,7 @@ Where this document and the AI Spec disagree about wording, the AI Spec wins. Wo
 2. **Anonymity is a first-class path, not a downgrade.** "Lanjutkan sebagai Tamu" is presented with equal weight to the other two options, not as fine print at the bottom.
 3. **Say less.** These users are often anxious. Every extra sentence of UI copy is a delay between them and their question.
 4. **Never leave a message in limbo.** A question the user sent must always be visibly in one of three states: sending, answered, or failed with a retry.
-5. **Slow is fine; silent is not.** Five seconds of visible progress is acceptable. Two seconds of nothing is not.
+5. **Slow is fine; silent is not.** Under five seconds of visible progress is the product target. Two seconds of nothing is not.
 6. **The interface should not preach.** The product's persuasion happens in the answer, if at all. The chrome stays neutral.
 
 ---

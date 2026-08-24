@@ -27,18 +27,22 @@ class AnswerSource(StrEnum):
     refusal = "refusal"
     no_grounding = "no_grounding"
     crisis = "crisis"
+    emotional_deferral = "emotional_deferral"
     error = "error"
 
     @property
     def likeable(self) -> bool:
-        """F-17: only a real answer can be liked, never a refusal or a crisis reply."""
+        """F-17: only a composed/curated answer can be liked — never templates."""
         return self in (AnswerSource.curated, AnswerSource.generated)
 
 
 class Relevance(StrEnum):
-    relevant = "relevant"
+    theology = "theology"
+    emotional_only = "emotional_only"
     ambiguous = "ambiguous"
     irrelevant = "irrelevant"
+    # Legacy alias used in early stub code / tests
+    relevant = "relevant"
 
 
 class ValidatorCode(StrEnum):

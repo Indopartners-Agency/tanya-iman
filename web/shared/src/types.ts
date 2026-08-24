@@ -15,6 +15,7 @@ export type AnswerSource =
   | 'refusal'
   | 'no_grounding'
   | 'crisis'
+  | 'emotional_deferral'
   | 'error'
 
 /** Mirrors AnswerSource.likeable in backend/models/enums.py. */

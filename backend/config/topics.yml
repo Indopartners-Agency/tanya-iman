@@ -1,6 +1,9 @@
-# The topic taxonomy. Source of truth: PRD Appendix A.
+# The topic taxonomy. Source of truth: PRD Appendix A (Word PRD labels).
 # Each topic is a grouping key for admin analytics (F-21) and a slot for a
 # curated answer (F-23).
+#
+# Emotional-only questions do NOT map here — they use F-44 (contact template).
+# These topic names may still tag faith/theology questions that touch the theme.
 #
 # `lainnya` is a legitimate outcome, not a failure. A rising `lainnya` count is
 # the signal that this taxonomy needs extending.
@@ -13,7 +16,7 @@ topics:
     name_id: Jalan Keselamatan
     name_en: Path of Salvation
   - slug: takut-neraka
-    name_id: Takut Neraka
+    name_id: Takut Akan Neraka
     name_en: Fear of Hell
   - slug: ketenangan-hati
     name_id: Ketenangan Hati
@@ -30,8 +33,8 @@ topics:
   - slug: pernikahan-keluarga
     name_id: Pernikahan & Keluarga
     name_en: Marriage & Family
-  - slug: jati-diri-isa-almasih
-    name_id: Jati Diri Isa Al-Masih
+  - slug: identitas-isa-almasih
+    name_id: Identitas Isa Al-Masih
     name_en: Identity of Isa Al-Masih
   - slug: kematian-isa-almasih
     name_id: Kematian Isa Al-Masih
