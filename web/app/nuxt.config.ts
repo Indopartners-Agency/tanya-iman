@@ -25,6 +25,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000',
+      // Set to '1' for the hosted client-approval build: the API client is
+      // swapped for fixtures so the static bundle needs no backend.
+      demoMode: process.env.NUXT_PUBLIC_DEMO_MODE || '',
       firebaseApiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY || '',
       firebaseAuthDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
       firebaseProjectId: process.env.NUXT_PUBLIC_FIREBASE_PROJECT_ID || '',
@@ -48,10 +51,23 @@ export default defineNuxtConfig({
             'Ruang untuk bertanya tentang iman, keraguan, dan pergumulan hidup.',
         },
       ],
+      // display=swap so a blocked font request never leaves a seeker looking
+      // at a blank conversation; tailwind.css names real fallbacks.
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@400;500;600&display=swap',
+        },
+      ],
     },
   },
 
+  // Cast because @nuxt/cli pulls @nuxt/schema 4.x, which npm hoists above the
+  // 3.17.7 copy nuxt 3 actually uses; defineNuxtConfig then types against the
+  // v4 shape and rejects `nitro`, though the build honours it correctly.
   nitro: {
     prerender: { crawlLinks: false, routes: ['/'] },
   },
-})
+} as Parameters<typeof defineNuxtConfig>[0])
