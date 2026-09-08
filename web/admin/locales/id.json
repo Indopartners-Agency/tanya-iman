@@ -1,0 +1,197 @@
+{
+  "_note": "Admin portal copy. The seeker app has its own file; nothing is shared between them, because admin strings are internal tooling language and are not under editorial review.",
+
+  "app": "Tanya Iman",
+  "portal": "Portal Editorial",
+  "demo_banner": "Pratinjau desain — data contoh, bukan data sungguhan.",
+
+  "nav": {
+    "dashboard": "Beranda",
+    "questions": "Pertanyaan",
+    "topics": "Topik",
+    "clusters": "Pertanyaan Serupa",
+    "gaps": "Kekosongan Materi",
+    "review": "Antrean Tinjauan",
+    "settings": "Pengaturan"
+  },
+
+  "role": {
+    "editor": "Editor",
+    "reviewer": "Peninjau",
+    "super_admin": "Admin Utama"
+  },
+
+  "login": {
+    "title": "Masuk ke Portal Editorial",
+    "email": "Alamat email",
+    "password": "Kata sandi",
+    "submit": "Masuk",
+    "demo_hint": "Mode pratinjau — pilih peran untuk melihat portal dari sudut pandang berbeda."
+  },
+
+  "dashboard": {
+    "title": "Beranda",
+    "subtitle": "Ringkasan tujuh hari terakhir.",
+    "volume": "Jumlah pertanyaan",
+    "volume_change": "{change} dibanding minggu lalu",
+    "top_topics": "Topik teratas",
+    "gaps": "Kekosongan materi",
+    "gaps_largest": "Terbesar: {name}",
+    "review": "Perlu ditinjau",
+    "review_items": "{count} item belum ditinjau",
+    "health": "Kesehatan jawaban",
+    "health_answer_rate": "Terjawab",
+    "health_like_rate": "Disukai",
+    "health_validator": "Lolos validator",
+    "health_alert": "Tingkat kelulusan validator tidak 100%. Ini gerbang rilis (K4) dan harus ditangani."
+  },
+
+  "questions": {
+    "title": "Pertanyaan",
+    "search": "Cari teks pertanyaan…",
+    "export": "Ekspor CSV",
+    "clear_filters": "Bersihkan filter",
+    "empty": "Tidak ada pertanyaan pada rentang tanggal ini.",
+    "col_time": "Waktu",
+    "col_question": "Pertanyaan",
+    "col_topic": "Topik",
+    "col_result": "Hasil",
+    "col_likes": "Suka",
+    "col_channel": "Kanal",
+    "col_flags": "Penanda"
+  },
+
+  "detail": {
+    "title": "Detail Pertanyaan",
+    "exchange": "Percakapan",
+    "diagnostics": "Diagnostik",
+    "classification": "Klasifikasi",
+    "retrieved": "Sumber yang diambil",
+    "cited": "Dikutip",
+    "retrieved_only": "Diambil",
+    "validation": "Validasi",
+    "repair": "Perbaikan",
+    "technical": "Teknis",
+    "copy_link": "Salin tautan",
+    "flag": "Tandai untuk ditinjau",
+    "delete": "Hapus"
+  },
+
+  "topics": {
+    "title": "Topik",
+    "col_topic": "Topik",
+    "col_questions": "Pertanyaan",
+    "col_likes": "Suka",
+    "col_curated": "Jawaban kurasi",
+    "col_refusal": "Tingkat penolakan",
+    "write": "Tulis jawaban",
+    "edit": "Ubah jawaban",
+    "curated_none": "Belum ada",
+    "curated_draft": "Draf",
+    "curated_published": "Terbit",
+    "lainnya_warning": "Porsi ‘lainnya’ melebihi 10% — taksonomi topik perlu ditinjau."
+  },
+
+  "editor": {
+    "title": "Editor Jawaban",
+    "answer_label": "Jawaban",
+    "rules": "Aturan",
+    "rule_length": "Panjang",
+    "rule_terminology": "Sebutan",
+    "rule_scripture": "Ayat",
+    "rule_citations": "Tautan",
+    "words": "{count} / 25–250 kata",
+    "terminology_ok": "Sebutan sudah sesuai.",
+    "terminology_bad": "Ganti ‘{word}’ — gunakan ‘Allah’ atau ‘Isa Al-Masih’.",
+    "citations_count": "{count} dari 1–2 tautan dipilih",
+    "citation_search": "Cari artikel dari situs yang disetujui…",
+    "save_draft": "Simpan sebagai draf",
+    "publish": "Terbitkan",
+    "publish_confirm": "Jawaban ini akan langsung ditampilkan kepada semua pengguna yang bertanya tentang topik ini.",
+    "draft_notice": "Draf tidak pernah ditampilkan kepada pengguna.",
+    "too_narrow": "Editor jawaban memerlukan layar minimal 768px."
+  },
+
+  "clusters": {
+    "title": "Pertanyaan Serupa",
+    "col_canonical": "Pertanyaan umum",
+    "col_count": "Jumlah",
+    "col_topic": "Topik",
+    "col_last": "Terakhir ditanya",
+    "col_curated": "Jawaban kurasi",
+    "make_curated": "Jadikan jawaban kurasi",
+    "members": "Pertanyaan asli"
+  },
+
+  "gaps": {
+    "title": "Kekosongan Materi",
+    "subtitle": "Pertanyaan yang tidak dapat dijawab dari materi yang ada, diurutkan menurut frekuensi.",
+    "col_canonical": "Pertanyaan",
+    "col_count": "Ditanyakan",
+    "col_last": "Terakhir",
+    "col_topic": "Topik terdekat",
+    "resolved": "Sudah ditulis",
+    "resolved_note": "Status ini diturunkan dari materi, bukan ditetapkan manual — kekosongan hilang setelah proses pengambilan materi berikutnya mengonfirmasi jawabannya tersedia."
+  },
+
+  "review": {
+    "title": "Antrean Tinjauan",
+    "sensitive": "Catatan krisis dan penangguhan emosional bersifat sensitif dan tidak boleh keluar dari portal ini.",
+    "col_type": "Jenis",
+    "col_summary": "Ringkasan",
+    "col_time": "Waktu",
+    "mark_reviewed": "Tandai sudah ditinjau",
+    "note": "Catatan (opsional)",
+    "type_ambiguous": "Klasifikasi ambigu",
+    "type_validator": "Kegagalan validator",
+    "type_crisis": "Peristiwa krisis",
+    "type_emotional": "Penangguhan emosional"
+  },
+
+  "settings": {
+    "title": "Pengaturan",
+    "system": "Sistem",
+    "contact": "Kontak dukungan emosional",
+    "accounts": "Akun admin",
+    "corpus": "Materi",
+    "audit": "Jejak audit",
+    "retention": "Masa simpan (bulan)",
+    "rate_limit": "Batas pertanyaan per jam",
+    "similarity": "Ambang kemiripan",
+    "similarity_warning": "Mengubah nilai ini mengubah pertanyaan mana yang bersedia dijawab oleh asisten. Tinjau hasil benchmark sebelum menyimpan.",
+    "contact_name": "Nama kontak",
+    "contact_number": "Nomor telepon",
+    "contact_pending": "Kontak dukungan belum ditetapkan. Nilai ini menunggu persetujuan tim pastoral klien dan tidak boleh diisi placeholder di staging atau produksi.",
+    "run_ingestion": "Jalankan sekarang",
+    "last_run": "Pengambilan terakhir",
+    "col_actor": "Pelaku",
+    "col_action": "Tindakan",
+    "col_target": "Objek",
+    "col_time": "Waktu"
+  },
+
+  "common": {
+    "loading": "Memuat…",
+    "cancel": "Batal",
+    "confirm": "Lanjutkan",
+    "save": "Simpan",
+    "saved": "Tersimpan.",
+    "irreversible": "Tindakan ini tidak dapat dibatalkan.",
+    "audit_id": "ID audit: {id}",
+    "no_access": "Peran Anda tidak memiliki akses ke halaman ini.",
+    "channel_web": "Web",
+    "channel_widget": "Widget",
+    "channel_android": "Android",
+    "logout": "Keluar"
+  },
+
+  "result": {
+    "generated": "Dijawab",
+    "curated": "Kurasi",
+    "refusal": "Ditolak",
+    "no_grounding": "Tanpa Sumber",
+    "crisis": "Krisis",
+    "emotional_deferral": "Emosional",
+    "error": "Gagal"
+  }
+}
