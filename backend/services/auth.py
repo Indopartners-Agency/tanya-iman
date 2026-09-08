@@ -52,6 +52,4 @@ async def verify_token(token: str) -> Principal:
 
 
 async def _verify_firebase_token(token: str) -> Principal:  # pragma: no cover - Phase 3
-    raise NotImplementedError(
-        "Firebase ID token verification lands in Phase 3 (PIP Task 3.1)."
-    )
+    raise NotImplementedError("Firebase ID token verification lands in Phase 3 (PIP Task 3.1).")

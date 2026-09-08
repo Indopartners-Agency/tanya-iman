@@ -106,9 +106,7 @@ class MemoryStorage:
         question = self._questions.get(question_id)
         if question is None:
             return 0
-        question.like_count = sum(
-            1 for k in self._likes if k.endswith(f"_{question_id}")
-        )
+        question.like_count = sum(1 for k in self._likes if k.endswith(f"_{question_id}"))
         return question.like_count
 
     async def is_liked(self, uid: str, question_id: str) -> bool:

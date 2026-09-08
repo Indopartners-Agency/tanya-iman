@@ -13,9 +13,7 @@ from pathlib import Path
 
 from config import responses
 
-LOCALE_PATH = (
-    Path(__file__).resolve().parents[2] / "web" / "app" / "locales" / "id.json"
-)
+LOCALE_PATH = Path(__file__).resolve().parents[2] / "web" / "app" / "locales" / "id.json"
 
 
 def test_shared_copy_is_byte_identical():

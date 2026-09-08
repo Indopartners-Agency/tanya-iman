@@ -55,9 +55,7 @@ async def load_active_session(storage: Storage, session_id: str, uid: str) -> Se
 
 async def record_turn(storage: Storage, session_id: str) -> None:
     settings = get_settings()
-    await storage.record_turn(
-        session_id, now=datetime.now(), ttl_hours=settings.session_ttl_hours
-    )
+    await storage.record_turn(session_id, now=datetime.now(), ttl_hours=settings.session_ttl_hours)
 
 
 async def conversation_context(storage: Storage, session_id: str) -> list[Question]:

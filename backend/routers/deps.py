@@ -29,9 +29,7 @@ async def principal_dep(
     try:
         return await verify_token(authorization[7:].strip())
     except InvalidTokenError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
 
 PrincipalDep = Annotated[Principal, Depends(principal_dep)]

@@ -37,7 +37,7 @@ def test_approved_domains_are_bare_hostnames():
 
 
 def test_all_required_response_keys_exist():
-    assert REQUIRED_RESPONSE_KEYS <= set(responses())
+    assert set(responses()) >= REQUIRED_RESPONSE_KEYS
 
 
 def test_rate_limit_response_interpolates_minutes():

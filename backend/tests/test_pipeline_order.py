@@ -64,15 +64,11 @@ async def test_rate_limited_request_never_reaches_the_engine(
         )
     calls_at_limit = engine.called
 
-    await client.post(
-        "/ask", json={"session_id": session_id, "text": "halo"}, headers=auth_headers
-    )
+    await client.post("/ask", json={"session_id": session_id, "text": "halo"}, headers=auth_headers)
     assert engine.called == calls_at_limit
 
 
-async def test_oversized_input_never_reaches_the_engine(
-    client, auth_headers, session_id, engine
-):
+async def test_oversized_input_never_reaches_the_engine(client, auth_headers, session_id, engine):
     """Length is checked before anything bills by the token."""
     await client.post(
         "/ask",

@@ -20,9 +20,7 @@ class Env(StrEnum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     env: Env = Env.development
     gcloud_project: str = "tanya-iman-local"
