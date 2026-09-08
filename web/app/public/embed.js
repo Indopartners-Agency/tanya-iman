@@ -51,7 +51,10 @@
 
   var frame = document.createElement('iframe')
   frame.title = config.label
-  frame.src = origin + '/#/chat?embed=1'
+  // History routing, not hash: the app has no hash router, so '/#/chat' loads
+  // the welcome screen and the widget never reaches the conversation. Firebase
+  // Hosting rewrites every path to index.html, so a real path resolves.
+  frame.src = origin + '/chat?embed=1'
   frame.setAttribute('allow', 'clipboard-write')
   // No allow-same-origin: the widget has no business touching the host page's
   // storage or DOM, and withholding it makes that structural.

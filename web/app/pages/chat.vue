@@ -58,10 +58,18 @@ watch(
   <AppShell :embed="embed">
     <DemoScenarioBar v-if="demo && !embed" />
 
-    <div class="relative flex-1 overflow-hidden">
+    <div
+      :class="[
+        'relative overflow-hidden',
+        'flex-1',
+      ]"
+    >
       <div
         ref="scroller"
-        class="h-full overflow-y-auto px-4 py-4"
+        :class="[
+          'overflow-y-auto px-4 py-4',
+          embed ? 'max-h-[440px] min-h-[220px]' : 'h-full',
+        ]"
         aria-live="polite"
         @scroll="onScroll"
       >

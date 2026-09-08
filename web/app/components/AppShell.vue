@@ -27,7 +27,19 @@ async function signOut() {
 </script>
 
 <template>
-  <div :class="['flex h-dvh flex-col', embed ? 'bg-surface' : 'bg-base']">
+  <!--
+    Outside the widget the shell owns the viewport, so the transcript scrolls
+    inside a fixed height. Inside it, the host page sizes the iframe from what
+    useEmbedHeight reports, so a viewport-height shell would report the frame's
+    own height back to itself and collapse toward zero. min-height with a
+    content-driven box is what makes the negotiation converge.
+  -->
+  <div
+    :class="[
+      'flex flex-col',
+      embed ? 'bg-surface' : 'h-dvh bg-base',
+    ]"
+  >
     <header
       v-if="!embed"
       class="flex items-center justify-between border-b border-subtle bg-surface px-4 py-3"

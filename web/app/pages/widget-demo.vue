@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
  * A stand-in for one of the five approved host sites, so the widget can be
- * reviewed in context. The iframe URL matches what public/embed.js loads:
- * hash routing, because the widget is served from a static bundle where a
- * deep path would 404 on refresh.
+ * reviewed in context. The iframe URL matches what public/embed.js loads —
+ * a real path, because the app uses history routing and Firebase Hosting
+ * rewrites every path to index.html.
  *
  * Chat UX section 11: inside the frame the header and outer background are
  * suppressed while the source note and privacy link remain, because F-4 and
@@ -78,7 +78,7 @@ onUnmounted(() => window.removeEventListener('message', onMessage))
         </p>
         <iframe
           ref="frame"
-          src="./#/chat?embed=1"
+          src="/chat?embed=1"
           title="Tanya Iman"
           :style="{
             width: '100%',
