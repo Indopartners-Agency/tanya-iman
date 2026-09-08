@@ -1,12 +1,14 @@
 <script setup lang="ts">
 /**
- * F-1: the entry screen offers SMS, WhatsApp, and Guest.
+ * Chat UX section 5 (F-1).
  *
- * Guest is listed last but is not hidden or de-emphasised. Someone with
- * questions about faith may have good reasons not to attach their phone number
- * to them, and making that the awkward path costs us the conversation.
+ * All three options are full-width buttons of equal size. Guest is outline
+ * rather than filled — permitted as a difference in weight — but it is never
+ * smaller, lower-contrast, or below the fold. Someone with questions about
+ * faith may have good reasons not to attach their phone number to them, and
+ * making that the awkward path costs us the conversation.
  *
- * SMS and WhatsApp are disabled until Phase 3 (PIP Tasks 3.1-3.3).
+ * No option is explained. If a label needs explaining, the label is wrong.
  */
 const { t } = useCopy()
 const auth = useAuthStore()
@@ -26,43 +28,51 @@ async function continueAsGuest() {
 </script>
 
 <template>
-  <main class="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-6">
-    <div class="w-full max-w-sm">
-      <h1 class="text-center text-2xl font-semibold text-slate-900">
-        {{ t('ui.login_title') }}
-      </h1>
-      <p class="mt-2 text-center text-[15px] leading-relaxed text-slate-600">
-        {{ t('ui.login_subtitle') }}
-      </p>
+  <main class="flex min-h-dvh flex-col bg-base px-6">
+    <div class="flex flex-1 flex-col justify-center">
+      <div class="mx-auto w-full max-w-[400px]">
+        <h1 class="text-center font-serif text-[30px] leading-tight text-primary">
+          {{ t('ui.app_name') }}
+        </h1>
+        <p class="mx-auto mt-3 max-w-[28ch] text-center text-[15px] leading-relaxed text-secondary">
+          {{ t('ui.tagline') }}
+        </p>
 
-      <div class="mt-8 space-y-3">
-        <button
-          type="button"
-          disabled
-          class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-400"
-        >
-          {{ t('ui.login_sms') }}
-        </button>
-        <button
-          type="button"
-          disabled
-          class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-400"
-        >
-          {{ t('ui.login_whatsapp') }}
-        </button>
-        <button
-          type="button"
-          :disabled="busy"
-          class="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
-          @click="continueAsGuest"
-        >
-          {{ t('ui.login_guest') }}
-        </button>
+        <div class="mt-10 space-y-3">
+          <NuxtLink
+            to="/masuk?channel=sms"
+            class="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-accent px-4 text-[15px] font-medium text-on-accent transition hover:bg-accent-hover"
+          >
+            {{ t('ui.login_sms') }}
+          </NuxtLink>
+
+          <NuxtLink
+            to="/masuk?channel=whatsapp"
+            class="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-accent px-4 text-[15px] font-medium text-on-accent transition hover:bg-accent-hover"
+          >
+            {{ t('ui.login_whatsapp') }}
+          </NuxtLink>
+
+          <button
+            type="button"
+            :disabled="busy"
+            class="flex min-h-[52px] w-full items-center justify-center rounded-xl border-2 border-accent bg-transparent px-4 text-[15px] font-medium text-accent transition hover:bg-raised disabled:opacity-50"
+            @click="continueAsGuest"
+          >
+            {{ t('ui.login_guest') }}
+          </button>
+        </div>
       </div>
-
-      <p class="mt-4 text-center text-xs leading-relaxed text-slate-500">
-        {{ t('ui.login_guest_note') }}
-      </p>
     </div>
+
+    <!-- F-4: footer link, 44px tap target even though the text is small. -->
+    <footer class="py-4 text-center">
+      <NuxtLink
+        to="/privasi"
+        class="meta inline-flex min-h-[44px] items-center underline underline-offset-2"
+      >
+        {{ t('ui.privacy') }}
+      </NuxtLink>
+    </footer>
   </main>
 </template>

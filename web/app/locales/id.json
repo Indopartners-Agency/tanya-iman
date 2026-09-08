@@ -1,6 +1,5 @@
 {
   "_note": "Strings under `shared` are byte-identical to backend/config/responses.id.yml and are asserted by backend/tests/test_copy_parity.py. Strings under `ui` are client-only. Indonesian is the only locale; there is no English fallback, because a half-translated faith conversation reads worse than none.",
-
   "shared": {
     "greeting": "Selamat datang. Silakan tanyakan apa pun tentang iman — Allah, Isa Al-Masih, Kitab Suci, atau pertanyaan iman lainnya.",
     "source_note": "Jawaban disusun berdasarkan Kitab Suci.",
@@ -14,18 +13,15 @@
     "input_too_long": "Pertanyaan Anda terlalu panjang. Mohon persingkat menjadi paling banyak 1.000 karakter.",
     "input_empty": "Silakan tulis pertanyaan Anda terlebih dahulu."
   },
-
   "ui": {
     "app_name": "Tanya Iman",
     "tagline": "Ruang untuk bertanya tentang iman.",
-
     "login_title": "Selamat datang di Tanya Iman",
     "login_subtitle": "Pilih cara masuk untuk mulai bertanya.",
     "login_sms": "Masuk dengan SMS",
     "login_whatsapp": "Masuk dengan WhatsApp",
     "login_guest": "Lanjut sebagai Tamu",
     "login_guest_note": "Sebagai tamu, riwayat percakapan Anda hanya tersimpan di perangkat ini.",
-
     "phone_label": "Nomor telepon",
     "phone_placeholder": "08xxxxxxxxxx",
     "phone_invalid": "Nomor telepon belum benar.",
@@ -36,25 +32,28 @@
     "otp_resend": "Kirim ulang kode",
     "otp_resend_in": "Kirim ulang dalam {seconds} detik",
     "otp_change_number": "Ganti nomor",
-
     "composer_placeholder": "Tulis pertanyaan Anda…",
     "composer_send": "Kirim",
     "composer_thinking": "Sedang menyiapkan jawaban…",
     "composer_counter": "{count}/1000",
-
     "answer_sources": "Bacaan terkait",
     "answer_like": "Jawaban ini membantu",
     "answer_liked": "Terima kasih",
-
     "upgrade_prompt": "Simpan riwayat percakapan Anda dengan masuk melalui SMS atau WhatsApp.",
     "upgrade_action": "Masuk sekarang",
     "upgrade_dismiss": "Nanti saja",
-
     "session_expired": "Percakapan ini sudah berakhir. Silakan mulai percakapan baru.",
     "session_new": "Mulai percakapan baru",
     "network_error": "Koneksi terputus. Silakan coba lagi.",
     "retry": "Coba lagi",
-
+    "still_working": "Masih menyiapkan jawaban…",
+    "new_messages": "Pesan baru",
+    "rate_limited_in": "Silakan coba lagi dalam {time}",
+    "menu": "Menu",
+    "back": "Kembali",
+    "demo_banner": "Pratinjau desain — jawaban contoh, bukan jawaban resmi.",
+    "demo_scenario": "Skenario",
+    "crisis_demo_note": "Nomor bantuan pada contoh ini belum final dan menunggu persetujuan tim pastoral.",
     "privacy": "Kebijakan Privasi",
     "logout": "Keluar"
   }
