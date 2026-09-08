@@ -42,7 +42,7 @@
     'padding:12px 20px',
     'border:0',
     'border-radius:9999px',
-    'background:#059669',
+    'background:#0f3d2e',
     'color:#fff',
     'font:500 15px/1 ui-sans-serif,system-ui,sans-serif',
     'box-shadow:0 4px 14px rgba(0,0,0,.18)',
@@ -80,6 +80,21 @@
 
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && open) toggle()
+  })
+
+  // The widget reports its content height so a long answer is not clipped and
+  // a short one does not leave a band of empty space (Chat UX section 11).
+  var MAX_HEIGHT_PX = 620
+
+  window.addEventListener('message', function (event) {
+    if (event.source !== frame.contentWindow) return
+    if (!event.data || event.data.type !== 'tanya-iman:height') return
+
+    var next = Number(event.data.height)
+    if (!isFinite(next) || next <= 0) return
+
+    frame.style.height =
+      'min(' + Math.min(next, MAX_HEIGHT_PX) + 'px, calc(100vh - 120px))'
   })
 
   function mount() {
