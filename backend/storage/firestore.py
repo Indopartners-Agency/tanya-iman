@@ -41,8 +41,10 @@ class FirestoreStorage:
         return user
 
     async def touch_user(self, uid: str, at: datetime) -> None:
-        await self._db.collection(USERS).document(uid).update(
-            {"last_active_at": at, "question_count": firestore.Increment(1)}
+        await (
+            self._db.collection(USERS)
+            .document(uid)
+            .update({"last_active_at": at, "question_count": firestore.Increment(1)})
         )
 
     # --- sessions ------------------------------------------------------------
@@ -72,12 +74,16 @@ class FirestoreStorage:
         return Session(**snap.to_dict()) if snap.exists else None
 
     async def record_turn(self, session_id: str, now: datetime, ttl_hours: int) -> None:
-        await self._db.collection(SESSIONS).document(session_id).update(
-            {
-                "last_message_at": now,
-                "expires_at": now + timedelta(hours=ttl_hours),
-                "message_count": firestore.Increment(1),
-            }
+        await (
+            self._db.collection(SESSIONS)
+            .document(session_id)
+            .update(
+                {
+                    "last_message_at": now,
+                    "expires_at": now + timedelta(hours=ttl_hours),
+                    "message_count": firestore.Increment(1),
+                }
+            )
         )
 
     # --- questions -----------------------------------------------------------

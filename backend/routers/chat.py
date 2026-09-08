@@ -161,9 +161,7 @@ async def like(
     # on a crisis message would corrupt the editorial signal the admin panel
     # reads from like counts.
     if not question.answer_source.likeable:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, detail="this answer type cannot be liked"
-        )
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="this answer type cannot be liked")
 
     count = await storage.set_like(user.uid, question_id, liked)
     return LikeResponse(question_id=question_id, liked=liked, like_count=count)
