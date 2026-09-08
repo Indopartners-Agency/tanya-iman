@@ -1,38 +1,94 @@
 <script setup lang="ts">
+import { dashboard, gaps, reviewCount, topics } from '~/demo/fixtures'
+import { useSessionStore } from '~/stores/session'
+
 /**
- * Phase 4 shell (PIP section 2). The admin surface is specified in
- * docs/admin-ux-specification.md; this page exists so the app builds,
- * deploys, and has a route to hang the real screens off.
+ * Admin UX section 6. Five cards, each linking to the view behind it.
+ *
+ * The answer-health card turns danger and says so plainly whenever the
+ * validator pass rate is not 100%. It is a release gate (K4), and a dashboard
+ * that lets it slide past as one number among five is not doing its job.
  */
-const phases = [
-  { id: 'AD-1', label: 'Daftar & detail pertanyaan', task: 'PIP Task 4.2' },
-  { id: 'AD-2', label: 'Editor jawaban kurasi', task: 'PIP Task 4.3' },
-  { id: 'AD-3', label: 'Topik & frekuensi pertanyaan', task: 'PIP Task 4.4' },
-  { id: 'AD-4', label: 'Peninjauan jawaban tanpa dasar', task: 'PIP Task 4.5' },
-]
+const { t } = useCopy()
+const session = useSessionStore()
+const router = useRouter()
+
+onMounted(() => {
+  if (!session.isAuthenticated) router.replace('/masuk')
+})
+
+const validatorFailing = computed(() => dashboard.validatorPassPct < 100)
+const topFive = computed(() => topics.slice(0, 5))
+const largestGap = computed(() => gaps[0])
 </script>
 
 <template>
   <div>
-    <h2 class="text-lg font-semibold text-slate-900">Ringkasan</h2>
-    <p class="mt-1 text-sm text-slate-600">
-      Kerangka panel admin. Layar berikut dibangun pada Fase 4.
-    </p>
+    <PageHeader :title="t('dashboard.title')" :subtitle="t('dashboard.subtitle')" />
 
-    <ul class="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-      <li
-        v-for="phase in phases"
-        :key="phase.id"
-        class="flex items-center justify-between px-4 py-3"
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <StatCard
+        :label="t('dashboard.volume')"
+        :value="String(dashboard.volumeThisWeek)"
+        to="/pertanyaan"
       >
-        <div>
-          <p class="text-sm font-medium text-slate-800">{{ phase.label }}</p>
-          <p class="text-xs text-slate-500">{{ phase.id }}</p>
-        </div>
-        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
-          {{ phase.task }}
-        </span>
-      </li>
-    </ul>
+        <p class="meta">
+          {{ t('dashboard.volume_change', { change: `+${dashboard.volumeChangePct}%` }) }}
+        </p>
+      </StatCard>
+
+      <StatCard :label="t('dashboard.gaps')" :value="String(gaps.length)" to="/kekosongan">
+        <p v-if="largestGap" class="meta">
+          {{ t('dashboard.gaps_largest', { name: largestGap.canonical }) }}
+        </p>
+      </StatCard>
+
+      <StatCard :label="t('dashboard.review')" :value="String(reviewCount)" to="/tinjauan">
+        <p class="meta">{{ t('dashboard.review_items', { count: reviewCount }) }}</p>
+      </StatCard>
+
+      <StatCard
+        :label="t('dashboard.health')"
+        :value="`${dashboard.validatorPassPct}%`"
+        :alert="validatorFailing"
+        to="/pertanyaan?validator=gagal"
+      >
+        <p class="meta">
+          {{ t('dashboard.health_answer_rate') }} {{ dashboard.answerRatePct }}% ·
+          {{ t('dashboard.health_like_rate') }} {{ dashboard.likeRatePct }}%
+        </p>
+        <p v-if="validatorFailing" class="mt-1.5 text-[12.5px] text-danger">
+          {{ t('dashboard.health_alert') }}
+        </p>
+      </StatCard>
+
+      <div class="rounded-xl border border-subtle bg-surface p-4 sm:col-span-2">
+        <p class="meta">{{ t('dashboard.top_topics') }}</p>
+        <ul class="mt-2 divide-y divide-subtle">
+          <li
+            v-for="topic in topFive"
+            :key="topic.slug"
+            class="flex items-center justify-between gap-3 py-2"
+          >
+            <NuxtLink to="/topik" class="text-[13.5px] text-primary hover:text-accent">
+              {{ topic.label }}
+            </NuxtLink>
+            <div class="flex items-center gap-2">
+              <StatusChip
+                :label="t(`topics.curated_${topic.curated}`)"
+                :tone="
+                  topic.curated === 'published'
+                    ? 'success'
+                    : topic.curated === 'draft'
+                      ? 'warning'
+                      : 'neutral'
+                "
+              />
+              <span class="tabular text-[13px] text-secondary">{{ topic.questions }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
 </template>
