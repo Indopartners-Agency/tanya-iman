@@ -1,4 +1,4 @@
-/** See the seeker app's useDemoMode. Same flag, same lifetime. */
+/** See the seeker app's useDemoMode. Same flag, same lifetime, same coercion. */
 export function useDemoMode(): boolean {
-  return useRuntimeConfig().public.demoMode === '1'
+  return String(useRuntimeConfig().public.demoMode) === '1'
 }
