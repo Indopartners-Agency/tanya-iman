@@ -1,0 +1,36 @@
+/* Zamrud & Perkamen — seeker surface.
+   Mirrors seekerTokens in web/shared/src/tokens.ts. Do not edit one without
+   the other; the palette is verified by web/shared/src/tokens.test.ts. */
+:root {
+  --bg-base: #f4f2e9;
+  --bg-surface: #fffdf7;
+  --bg-raised: #ebe8db;
+
+  --text-primary: #1b2620;
+  --text-secondary: #55645c;
+  --text-on-accent: #f7fbf8;
+
+  --accent-primary: #0f3d2e;
+  --accent-hover: #175142;
+
+  --border-subtle: #e0dbc9;
+  --border-strong: #c8c2ac;
+
+  --bubble-user: #0f3d2e;
+  --bubble-assistant: #fffdf7;
+
+  --status-warning-text: #7c4a12;
+  --status-warning-bg: #f8ecd9;
+
+  --status-info-text: #2f5548;
+  --status-info-bg: #e7efea;
+
+  --status-care-text: #6b4423;
+  --status-care-bg: #f9efe0;
+  --status-care-border: #c9a227;
+
+  /* Elevation — warm-tinted, never neutral black, so shadows sit on parchment
+     rather than looking like grey smudges. */
+  --shadow-sm: 0 1px 2px rgba(27, 38, 32, 0.06);
+  --shadow-md: 0 2px 6px -2px rgba(27, 38, 32, 0.1), 0 8px 20px -12px rgba(27, 38, 32, 0.18);
+}

@@ -1,8 +1,16 @@
+@import './tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+      Roboto, sans-serif;
+    --font-serif: 'Lora', Georgia, Cambria, 'Times New Roman', serif;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
   }
@@ -10,8 +18,40 @@
   /* Indonesian text at conversational length reads poorly at the browser
      default. 15px/1.7 is the body setting used throughout the chat surface. */
   body {
-    font-family:
-      ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
     text-rendering: optimizeLegibility;
+  }
+
+  /* Chat UX 4.3: headings are the one place the serif appears. It supplies the
+     editorial weight the product needs without any religious iconography. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  /* Chat UX 13: the pending animation respects reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Chat UX 4.3: the third type level. Used for the source note, timestamps,
+     and citation domains. */
+  .meta {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-secondary);
   }
 }
