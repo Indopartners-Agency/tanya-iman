@@ -1,3 +1,5 @@
 export * from './client'
+export * from './contrast'
+export * from './tokens'
 export * from './types'
 export * from './word-count'
