@@ -24,7 +24,11 @@ export const useAuthStore = defineStore('auth', () => {
     // reload keeps the same conversation, which is the behaviour the real
     // implementation must also have.
     const stored = localStorage.getItem('ti_dev_uid')
-    const id = stored ?? `guest_${crypto.randomUUID().slice(0, 12)}`
+    const rand =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID().slice(0, 12)
+        : Math.random().toString(36).slice(2, 14)
+    const id = stored ?? `guest_${rand}`
     localStorage.setItem('ti_dev_uid', id)
 
     uid.value = id

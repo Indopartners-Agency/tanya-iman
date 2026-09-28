@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Firestore SDK dial an empty gRPC URI and crash at startup.
     firestore_emulator_host: str | None = None
     storage_backend: str = "memory"
+    firestore_database: str = "(default)"
 
     answer_engine: str = "stub"
     prompt_version: str = "0.1.0-stub"
