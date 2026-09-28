@@ -4,7 +4,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from models.enums import AdminRole, AnswerSource, AuthMethod, Platform, ValidatorCode
+from models.enums import (
+    AdminRole,
+    AnswerSource,
+    ArticleStatus,
+    AuthMethod,
+    ChunkDecision,
+    Platform,
+    ValidatorCode,
+)
 
 # --- Stored entities ---------------------------------------------------------
 
@@ -78,6 +86,52 @@ class SystemConfig(BaseModel):
     value: str
     updated_by: str | None = None
     updated_at: datetime | None = None
+
+
+class Article(BaseModel):
+    id: str
+    site: str
+    url: str
+    title: str
+    published_at: datetime | None = None
+    summary: str = ""
+    cleaned_text: str | None = None
+    topic_slugs: list[str] = Field(default_factory=list)
+    content_hash: str
+    first_seen_at: datetime
+    last_crawled_at: datetime
+    status: ArticleStatus = ArticleStatus.active
+
+
+class ArticleChunk(BaseModel):
+    id: str  # {article_id}#{chunk_index}
+    article_id: str
+    site: str
+    url: str
+    title: str
+    chunk_index: int
+    text: str
+    embedding: list[float] | None = None
+    embedding_model: str = "text-multilingual-embedding-002"
+    token_count: int = 0
+    has_forbidden_term: bool = False
+    is_retrievable: bool = True
+    created_at: datetime
+
+
+class FlaggedChunk(BaseModel):
+    id: str
+    chunk_id: str
+    article_id: str
+    site: str
+    url: str
+    title: str
+    matched_terms: list[str] = Field(default_factory=list)
+    text: str
+    decision: ChunkDecision = ChunkDecision.pending
+    created_at: datetime
+    reviewed_at: datetime | None = None
+    reviewed_by: str | None = None
 
 
 # --- Engine contract ---------------------------------------------------------

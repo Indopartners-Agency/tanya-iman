@@ -2,7 +2,7 @@
 
 Tactical **order of work** for open and scheduled items in [backlog.md](backlog.md). Strategic phases stay in [Project Implementation Plan](../project-implementation-plan.md) (PIP).
 
-**Last updated:** 2026-09-28 — Wave 1, 2, & 3 shipped; Wave 4 (Phone & OTP Auth) deferred to backlog on hold; Wave 5 (Corpus & RAG) planned next.
+**Last updated:** 2026-09-28 — Waves 1, 2, 3, & 5 shipped; Wave 4 (Phone & OTP Auth) deferred to backlog on hold; Wave 6 (Production Answer Engine & RAG Integration) planned next.
 
 ---
 
@@ -13,10 +13,11 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 | — | **Wave 1** | ✅ shipped | Foundation & Nuxt Shell — Pydantic schemas, storage layer parity, topics/config seeder, automated unit tests (**BL-FOUND-001**, **BL-AUTH-000**) |
 | — | **Wave 2** | ✅ shipped | Dev Cloud Infrastructure — Cloud Run backend, Firebase hosting (seeker + admin), `deploy.sh` (**BL-OPS-001**) |
 | — | **Wave 3** | ✅ shipped | Admin Authentication & Security Hardening — JWT login, refresh token, bcrypt, dual-layer RBAC, super_admin bootstrap, portal session store (**BL-SEC-001**, **BL-SEC-002**) |
+| — | **Wave 5** | ✅ shipped | Corpus Ingestion & RAG Pipeline — 5-site crawler, token chunker, Vertex AI multilingual embeddings, Firestore vector retriever (**BL-CORP-001**, **BL-CORP-002**, **BL-CORP-003**, **BL-CORP-004**) |
 | **4** | **Wave 4** | ⏸️ on_hold | Live Phone Auth (SMS & WhatsApp OTP) & Guest Conversion — (**BL-AUTH-001**, **BL-AUTH-002**, **BL-AUTH-003**, **BL-AUTH-004**) |
-| **5** | **Wave 5** | 📋 planned | Corpus Ingestion & RAG Pipeline — 5-site crawler, token chunker, Vertex AI multilingual embeddings, Firestore vector retriever (**BL-CORP-001**, **BL-CORP-002**, **BL-CORP-003**, **BL-CORP-004**) |
+| **6** | **Wave 6** | 📋 planned | Production Answer Engine — Classifier, curated override, composer, compliance validators (V1-V5), and pipeline integration (**BL-ENG-001**, **BL-ENG-002**, **BL-ENG-003**, **BL-ENG-004**) |
 
-**Next candidate:** **Wave 5 (Corpus Ingestion & Vector RAG Pipeline)** is the active planned wave.
+**Next candidate:** **Wave 6 (Production Answer Engine & RAG Integration)** is the active planned wave.
 
 ---
 
@@ -102,21 +103,47 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 
 ---
 
-### Wave 5 — Corpus Ingestion & Vector RAG Pipeline 📋 *(planned)*
+### Wave 5 — Corpus Ingestion & Vector RAG Pipeline ✅ *(closed 2026-09-28)*
 
-**Status:** planned
+**Status:** completed
 
 **Impact:** [Corpus & Knowledge Base](backlog.md#corpus--knowledge-base) — PIP Phase 4 & PRD F-41.
 
+**Shipped:**
+- 5-site web crawler with robots.txt, sitemaps, semantic content extraction, and SHA-256 change detection (`crawler.py`).
+- Token-bounded article chunker (~400 token windows, 80 token overlap) with V2 forbidden-term screening (`chunker.py`).
+- Batched 768-dim vector embedder with `embedding_model` stamping, upsert, and chunk retirement (`embedder.py`).
+- Vector retriever with query-time domain allowlist gate, threshold evaluation, and per-article cap (`retriever.py`).
+- CLI orchestration runner (`run.py`).
+- 20 unit tests across 4 test suites with 100% test pass rate (`test_crawler.py`, `test_chunker.py`, `test_embedder.py`, `test_retriever.py`).
+
+| ID | Title | Status |
+|----|-------|--------|
+| ~~**BL-CORP-001**~~ | ~~Five-site crawler with change detection and allowlist~~ | completed |
+| ~~**BL-CORP-002**~~ | ~~Article chunker with token bounds and forbidden-term screening~~ | completed |
+| ~~**BL-CORP-003**~~ | ~~Multilingual embeddings and Firestore vector upsert~~ | completed |
+| ~~**BL-CORP-004**~~ | ~~Vector retriever with query-time site allowlist~~ | completed |
+
+---
+
+### Wave 6 — Production Answer Engine & RAG Integration 📋 *(planned)*
+
+**Status:** planned
+
+**Impact:** [AI Answer Engine & Evaluation](backlog.md#ai-answer-engine--evaluation) — PIP Phase 5 & PRD F-9 – F-15, F-28, F-30 – F-32.
+
 **Scope:**
-- 5-site web crawler honoring robots.txt and sitemaps with content-hash change detection (`crawler.py`).
-- Article chunking with token bounds (200–400 tokens) and V2 forbidden-term screening (`chunker.py`).
-- Vertex AI multilingual embeddings (`text-multilingual-embedding-002`) and Firestore vector upsert (`embedder.py`).
-- Query-time filtered vector retriever (`retriever.py`).
+- Crisis guard asserting 100% recall before rate limiting (`engine/crisis.py`).
+- Relevance classifier & topic resolver with injection rejection (`engine/classifier.py`).
+- Curated answer override routing before retrieval (`engine/curated.py`).
+- Answer composer with versioned prompt and structured JSON schema output (`engine/composer.py`).
+- Five compliance validators V1–V5 (word count, terminology, scripture balance, citation allowlist, grounding) with single repair loop (`engine/validators.py`).
+- Unified orchestration pipeline wiring all components and retiring the stub engine (`engine/pipeline.py`).
 
 | ID | Title | Depends on |
 |----|-------|------------|
-| **BL-CORP-001** | Five-site crawler with change detection and allowlist | — |
-| **BL-CORP-002** | Article chunker with token bounds and forbidden-term screening | **BL-CORP-001** |
-| **BL-CORP-003** | Multilingual embeddings and Firestore vector upsert | **BL-CORP-002** |
-| **BL-CORP-004** | Vector retriever with query-time site allowlist | **BL-CORP-003** |
+| **BL-ENG-001** | Relevance classifier, topic resolver, and curated answer override | **BL-CORP-004** |
+| **BL-ENG-002** | Answer composer with structured output and prompt stamping | **BL-ENG-001** |
+| **BL-ENG-003** | Compliance validators V1–V5 and repair loop | **BL-ENG-002** |
+| **BL-ENG-004** | Pipeline wiring, stub retirement, and benchmark harness | **BL-ENG-003** |
+

@@ -9,11 +9,33 @@ the storage layer.
 from __future__ import annotations
 
 import asyncio
+import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from models import AdminUser, Question, Session, SystemConfig, Topic, User
-from models.enums import AdminRole, AuthMethod, Platform
+from models import (
+    AdminUser,
+    Article,
+    ArticleChunk,
+    FlaggedChunk,
+    Question,
+    Session,
+    SystemConfig,
+    Topic,
+    User,
+)
+from models.enums import AdminRole, ArticleStatus, AuthMethod, ChunkDecision, Platform
+
+
+def _cosine_similarity(v1: list[float], v2: list[float]) -> float:
+    if not v1 or not v2 or len(v1) != len(v2):
+        return 0.0
+    dot = sum(a * b for a, b in zip(v1, v2, strict=True))
+    norm1 = math.sqrt(sum(a * a for a in v1))
+    norm2 = math.sqrt(sum(b * b for b in v2))
+    if norm1 == 0.0 or norm2 == 0.0:
+        return 0.0
+    return dot / (norm1 * norm2)
 
 
 class MemoryStorage:
@@ -26,6 +48,9 @@ class MemoryStorage:
         self._topics: dict[str, Topic] = {}
         self._system_config: dict[str, SystemConfig] = {}
         self._admin_users: dict[str, AdminUser] = {}
+        self._articles: dict[str, Article] = {}
+        self._chunks_store: dict[str, ArticleChunk] = {}
+        self._flagged_chunks: dict[str, FlaggedChunk] = {}
         self._chunks: int = 0
         self._lock = asyncio.Lock()
 
@@ -168,10 +193,90 @@ class MemoryStorage:
     async def count_super_admins(self) -> int:
         return sum(1 for u in self._admin_users.values() if u.role == AdminRole.super_admin)
 
-    # --- corpus --------------------------------------------------------------
+    # --- corpus & articles ---------------------------------------------------
+
+    async def get_article(self, article_id: str) -> Article | None:
+        return self._articles.get(article_id)
+
+    async def get_article_by_url(self, url: str) -> Article | None:
+        for article in self._articles.values():
+            if article.url == url:
+                return article
+        return None
+
+    async def save_article(self, article: Article) -> None:
+        self._articles[article.id] = article
+
+    async def list_articles(
+        self, site: str | None = None, status: ArticleStatus | None = None
+    ) -> list[Article]:
+        articles = list(self._articles.values())
+        if site is not None:
+            articles = [a for a in articles if a.site == site]
+        if status is not None:
+            articles = [a for a in articles if a.status == status]
+        return articles
+
+    # --- article chunks & vector search --------------------------------------
+
+    async def get_chunk(self, chunk_id: str) -> ArticleChunk | None:
+        return self._chunks_store.get(chunk_id)
+
+    async def save_chunk(self, chunk: ArticleChunk) -> None:
+        self._chunks_store[chunk.id] = chunk
+
+    async def save_chunks_batch(self, chunks: list[ArticleChunk]) -> None:
+        for chunk in chunks:
+            self._chunks_store[chunk.id] = chunk
+
+    async def list_chunks_by_article(self, article_id: str) -> list[ArticleChunk]:
+        return [c for c in self._chunks_store.values() if c.article_id == article_id]
+
+    async def delete_chunks_by_article(self, article_id: str) -> None:
+        to_delete = [c.id for c in self._chunks_store.values() if c.article_id == article_id]
+        for cid in to_delete:
+            self._chunks_store.pop(cid, None)
 
     async def count_article_chunks(self) -> int:
+        if self._chunks_store:
+            return len(self._chunks_store)
         return self._chunks
+
+    async def find_nearest_chunks(
+        self,
+        query_vector: list[float],
+        limit: int = 8,
+        site_allowlist: frozenset[str] | None = None,
+        min_similarity: float = 0.0,
+    ) -> list[tuple[ArticleChunk, float]]:
+        results: list[tuple[ArticleChunk, float]] = []
+        for chunk in self._chunks_store.values():
+            if site_allowlist and chunk.site not in site_allowlist:
+                continue
+            if not chunk.is_retrievable:
+                continue
+            if not chunk.embedding:
+                continue
+
+            sim = _cosine_similarity(query_vector, chunk.embedding)
+            if sim >= min_similarity:
+                results.append((chunk, sim))
+
+        results.sort(key=lambda item: item[1], reverse=True)
+        return results[:limit]
+
+    # --- flagged chunks (OI-1) -----------------------------------------------
+
+    async def save_flagged_chunk(self, flagged: FlaggedChunk) -> None:
+        self._flagged_chunks[flagged.id] = flagged
+
+    async def list_flagged_chunks(
+        self, decision: ChunkDecision | None = None
+    ) -> list[FlaggedChunk]:
+        flagged = list(self._flagged_chunks.values())
+        if decision is not None:
+            flagged = [f for f in flagged if f.decision == decision]
+        return flagged
 
     # --- test helpers --------------------------------------------------------
 

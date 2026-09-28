@@ -10,8 +10,18 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
-from models import AdminUser, Question, Session, SystemConfig, Topic, User
-from models.enums import AuthMethod, Platform
+from models import (
+    AdminUser,
+    Article,
+    ArticleChunk,
+    FlaggedChunk,
+    Question,
+    Session,
+    SystemConfig,
+    Topic,
+    User,
+)
+from models.enums import ArticleStatus, AuthMethod, ChunkDecision, Platform
 
 
 class Storage(Protocol):
@@ -81,5 +91,41 @@ class Storage(Protocol):
 
     async def count_super_admins(self) -> int: ...
 
-    # --- corpus --------------------------------------------------------------
+    # --- corpus & articles ---------------------------------------------------
+    async def get_article(self, article_id: str) -> Article | None: ...
+
+    async def get_article_by_url(self, url: str) -> Article | None: ...
+
+    async def save_article(self, article: Article) -> None: ...
+
+    async def list_articles(
+        self, site: str | None = None, status: ArticleStatus | None = None
+    ) -> list[Article]: ...
+
+    # --- article chunks & vector search --------------------------------------
+    async def get_chunk(self, chunk_id: str) -> ArticleChunk | None: ...
+
+    async def save_chunk(self, chunk: ArticleChunk) -> None: ...
+
+    async def save_chunks_batch(self, chunks: list[ArticleChunk]) -> None: ...
+
+    async def list_chunks_by_article(self, article_id: str) -> list[ArticleChunk]: ...
+
+    async def delete_chunks_by_article(self, article_id: str) -> None: ...
+
     async def count_article_chunks(self) -> int: ...
+
+    async def find_nearest_chunks(
+        self,
+        query_vector: list[float],
+        limit: int = 8,
+        site_allowlist: frozenset[str] | None = None,
+        min_similarity: float = 0.0,
+    ) -> list[tuple[ArticleChunk, float]]: ...
+
+    # --- flagged chunks (OI-1) -----------------------------------------------
+    async def save_flagged_chunk(self, flagged: FlaggedChunk) -> None: ...
+
+    async def list_flagged_chunks(
+        self, decision: ChunkDecision | None = None
+    ) -> list[FlaggedChunk]: ...
