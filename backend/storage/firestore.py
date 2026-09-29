@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from google.cloud import firestore  # type: ignore[attr-defined]
 from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
@@ -43,8 +44,15 @@ ADMIN_USERS = "admin_users"
 
 
 class FirestoreStorage:
-    def __init__(self, project: str, database: str = "(default)") -> None:
-        self._db = firestore.AsyncClient(project=project, database=database)
+    def __init__(
+        self,
+        project: str,
+        database: str = "(default)",
+        credentials: Any | None = None,
+    ) -> None:
+        self._db = firestore.AsyncClient(
+            project=project, database=database, credentials=credentials
+        )
 
     # --- users ---------------------------------------------------------------
 
@@ -275,15 +283,21 @@ class FirestoreStorage:
         return ArticleChunk(**snap.to_dict()) if snap.exists else None
 
     async def save_chunk(self, chunk: ArticleChunk) -> None:
-        await self._db.collection(ARTICLE_CHUNKS).document(chunk.id).set(chunk.model_dump())
+        data = chunk.model_dump()
+        if chunk.embedding is not None:
+            data["embedding"] = Vector(chunk.embedding)
+        await self._db.collection(ARTICLE_CHUNKS).document(chunk.id).set(data)
 
     async def save_chunks_batch(self, chunks: list[ArticleChunk]) -> None:
         # Firestore batch maximum is 500 writes
         for i in range(0, len(chunks), 400):
             batch = self._db.batch()
             for chunk in chunks[i : i + 400]:
+                data = chunk.model_dump()
+                if chunk.embedding is not None:
+                    data["embedding"] = Vector(chunk.embedding)
                 doc_ref = self._db.collection(ARTICLE_CHUNKS).document(chunk.id)
-                batch.set(doc_ref, chunk.model_dump())
+                batch.set(doc_ref, data)
             await batch.commit()
 
     async def list_chunks_by_article(self, article_id: str) -> list[ArticleChunk]:
@@ -322,35 +336,66 @@ class FirestoreStorage:
         min_similarity: float = 0.0,
     ) -> list[tuple[ArticleChunk, float]]:
         coll = self._db.collection(ARTICLE_CHUNKS)
-        query = coll.where(filter=firestore.FieldFilter("is_retrievable", "==", True))
-        if site_allowlist:
-            query = query.where(filter=firestore.FieldFilter("site", "in", list(site_allowlist)))
+        results: list[tuple[ArticleChunk, float]] = []
 
-        try:
-            vector_query = query.find_nearest(
-                vector_field="embedding",
-                query_vector=Vector(query_vector),
-                distance_measure=DistanceMeasure.COSINE,
-                limit=limit,
-                distance_result_field="vector_distance",
-            )
-            results: list[tuple[ArticleChunk, float]] = []
-            async for doc in vector_query.stream():
-                data = doc.to_dict()
-                dist = data.pop("vector_distance", 1.0)
-                similarity = 1.0 - float(dist)
-                if similarity >= min_similarity:
-                    results.append((ArticleChunk(**data), similarity))
-            return results
-        except Exception:
+        if site_allowlist:
+            for site in site_allowlist:
+                try:
+                    site_query = coll.where(filter=firestore.FieldFilter("site", "==", site))
+                    vector_query = site_query.find_nearest(
+                        vector_field="embedding",
+                        query_vector=Vector(query_vector),
+                        distance_measure=DistanceMeasure.COSINE,
+                        limit=limit,
+                        distance_result_field="vector_distance",
+                    )
+                    async for doc in vector_query.stream():
+                        data = doc.to_dict()
+                        if not data.get("is_retrievable", True):
+                            continue
+                        dist = data.pop("vector_distance", 1.0)
+                        similarity = 1.0 - float(dist)
+                        if similarity >= min_similarity:
+                            results.append((ArticleChunk(**data), similarity))
+                except Exception:
+                    pass
+        else:
+            try:
+                vector_query = coll.find_nearest(
+                    vector_field="embedding",
+                    query_vector=Vector(query_vector),
+                    distance_measure=DistanceMeasure.COSINE,
+                    limit=limit,
+                    distance_result_field="vector_distance",
+                )
+                async for doc in vector_query.stream():
+                    data = doc.to_dict()
+                    if not data.get("is_retrievable", True):
+                        continue
+                    dist = data.pop("vector_distance", 1.0)
+                    similarity = 1.0 - float(dist)
+                    if similarity >= min_similarity:
+                        results.append((ArticleChunk(**data), similarity))
+            except Exception:
+                pass
+
+        if not results:
             # Fallback for emulator or non-indexed environments
             import math
 
+            query = coll
+            if site_allowlist:
+                query = query.where(
+                    filter=firestore.FieldFilter("site", "in", list(site_allowlist))
+                )
+
             all_chunks: list[ArticleChunk] = []
             async for doc in query.stream():
-                all_chunks.append(ArticleChunk(**doc.to_dict()))
+                data = doc.to_dict()
+                if not data.get("is_retrievable", True):
+                    continue
+                all_chunks.append(ArticleChunk(**data))
 
-            results = []
             for chunk in all_chunks:
                 if not chunk.embedding:
                     continue
@@ -362,8 +407,8 @@ class FirestoreStorage:
                     if sim >= min_similarity:
                         results.append((chunk, sim))
 
-            results.sort(key=lambda item: item[1], reverse=True)
-            return results[:limit]
+        results.sort(key=lambda item: item[1], reverse=True)
+        return results[:limit]
 
     # --- flagged chunks (OI-1) -----------------------------------------------
 
