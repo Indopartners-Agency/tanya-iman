@@ -2,11 +2,11 @@
 
 Tactical **order of work** for open and scheduled items in [backlog.md](backlog.md). Strategic phases stay in [Project Implementation Plan](../project-implementation-plan.md) (PIP).
 
-**Last updated:** 2026-09-28 — Waves 1, 2, 3, & 5 shipped; Wave 4 (Phone & OTP Auth) deferred to backlog on hold; Wave 6 (Production Answer Engine & RAG Integration) planned next.
+**Last updated:** 2026-09-29 — Waves 1, 2, 3, 5, & 6 shipped; Wave 4 (Phone & OTP Auth) deferred to backlog on hold; Wave 7 (Editorial Surface & Admin Portal) planned next.
 
 ---
 
-## What's Next *(2026-09-28)*
+## What's Next *(2026-09-29)*
 
 | # | Wave | Status | Scope |
 |---|------|--------|-------|
@@ -14,10 +14,11 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 | — | **Wave 2** | ✅ shipped | Dev Cloud Infrastructure — Cloud Run backend, Firebase hosting (seeker + admin), `deploy.sh` (**BL-OPS-001**) |
 | — | **Wave 3** | ✅ shipped | Admin Authentication & Security Hardening — JWT login, refresh token, bcrypt, dual-layer RBAC, super_admin bootstrap, portal session store (**BL-SEC-001**, **BL-SEC-002**) |
 | — | **Wave 5** | ✅ shipped | Corpus Ingestion & RAG Pipeline — 5-site crawler, token chunker, Vertex AI multilingual embeddings, Firestore vector retriever (**BL-CORP-001**, **BL-CORP-002**, **BL-CORP-003**, **BL-CORP-004**) |
+| — | **Wave 6** | ✅ shipped | Production Answer Engine — Classifier, curated override, composer, compliance validators (V1–V5), and pipeline integration (**BL-ENG-001**, **BL-ENG-002**, **BL-ENG-003**, **BL-ENG-004**) |
 | **4** | **Wave 4** | ⏸️ on_hold | Live Phone Auth (SMS & WhatsApp OTP) & Guest Conversion — (**BL-AUTH-001**, **BL-AUTH-002**, **BL-AUTH-003**, **BL-AUTH-004**) |
-| **6** | **Wave 6** | 📋 planned | Production Answer Engine — Classifier, curated override, composer, compliance validators (V1-V5), and pipeline integration (**BL-ENG-001**, **BL-ENG-002**, **BL-ENG-003**, **BL-ENG-004**) |
+| **7** | **Wave 7** | 📋 planned | Editorial Surface & Admin Portal — Question review, topic metrics, curated editor with V1–V4 checks, clustering, gaps, and audit logs (**BL-ADMIN-001** – **BL-ADMIN-006**) |
 
-**Next candidate:** **Wave 6 (Production Answer Engine & RAG Integration)** is the active planned wave.
+**Next candidate:** **Wave 7 (Editorial Surface — Admin Portal & Editorial Tooling)** is the active planned wave.
 
 ---
 
@@ -149,4 +150,30 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 | ~~**BL-ENG-002**~~ | ~~Answer composer with structured output and prompt stamping~~ | completed |
 | ~~**BL-ENG-003**~~ | ~~Compliance validators V1–V5 and repair loop~~ | completed |
 | ~~**BL-ENG-004**~~ | ~~Pipeline wiring, stub retirement, and benchmark harness~~ | completed |
+
+---
+
+### Wave 7 — Editorial Surface & Admin Portal 📋 *(planned)*
+
+**Status:** planned
+
+**Impact:** [Editorial Surface & Moderation](backlog.md#editorial-surface--moderation) — PIP Phase 6 & PRD F-20 – F-23, F-29, F-34 – F-37.
+
+**Scope:**
+- Question list and filtering API with cursor pagination, date/topic/crisis filters, and masked phone numbers (`GET /api/admin/questions`, `GET /api/admin/questions/export`).
+- Topic analytics API excluding crisis questions, tracking question counts, like counts, and curated status (`GET /api/admin/topics`).
+- Curated answer editor API with live V1–V4 compliance validation and audit logging (`PUT /api/admin/topics/{slug}/answer`).
+- Similar-question clustering within topics and content gaps aggregation (`GET /api/admin/clusters`, `GET /api/admin/gaps`).
+- Nuxt 3 SPA Admin Portal UI (`web/admin/`) with desktop-first layout, role-based action gating, question review table, and live word counter in curated editor.
+- Audit log tracking for destructive/editorial actions and data retention purge policy.
+
+| ID | Title | Depends on |
+|----|-------|------------|
+| **BL-ADMIN-001** | Question list API with cursor pagination, filters, and CSV export | **BL-ENG-004**, **BL-SEC-002** |
+| **BL-ADMIN-002** | Topic analytics and content gaps APIs | **BL-ADMIN-001** |
+| **BL-ADMIN-003** | Curated answer editing API with V1–V4 validation and audit trail | **BL-ENG-003**, **BL-ADMIN-001** |
+| **BL-ADMIN-004** | Similar-question clustering within topics | **BL-ADMIN-001**, **BL-CORP-003** |
+| **BL-ADMIN-005** | Editorial Web Admin Portal UI in Nuxt 3 SPA | **BL-ADMIN-001**, **BL-ADMIN-003** |
+| **BL-ADMIN-006** | Audit log tracking and retention policy purge | **BL-ADMIN-003** |
+
 
