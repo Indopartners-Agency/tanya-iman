@@ -69,3 +69,45 @@ export interface HealthResponse {
   corpus_chunk_count: number
   engine: string
 }
+
+export type AdminRole = 'editor' | 'reviewer' | 'super_admin'
+
+export interface AdminLoginRequest {
+  email: string
+  password: string
+}
+
+export interface AdminLoginResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  role: AdminRole
+  email: string
+}
+
+export interface AdminRefreshRequest {
+  refresh_token: string
+}
+
+export interface AdminRefreshResponse {
+  access_token: string
+  token_type: string
+}
+
+export interface AdminBootstrapRequest {
+  email: string
+  password: string
+}
+
+export interface AdminBootstrapResponse {
+  message: string
+  email: string
+  role: AdminRole
+}
+
+export interface AdminUserResponse {
+  id: string
+  email: string
+  role: AdminRole
+  is_active: boolean
+}

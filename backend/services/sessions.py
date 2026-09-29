@@ -7,12 +7,22 @@ engine gets as context (F-6).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from config import get_settings
 from models import Question, Session
 from models.enums import Platform
 from storage.base import Storage
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _is_expired(expires_at: datetime) -> bool:
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return expires_at <= _now()
 
 
 class SessionExpiredError(Exception):
@@ -34,7 +44,7 @@ async def start_session(
         uid=uid,
         platform=platform,
         embed_origin=embed_origin,
-        now=datetime.now(),
+        now=_now(),
         ttl_hours=settings.session_ttl_hours,
     )
 
@@ -48,14 +58,14 @@ async def load_active_session(storage: Storage, session_id: str, uid: str) -> Se
     session = await storage.get_session(session_id)
     if session is None or session.uid != uid:
         raise SessionNotFoundError(session_id)
-    if session.expires_at <= datetime.now():
+    if _is_expired(session.expires_at):
         raise SessionExpiredError(session_id)
     return session
 
 
 async def record_turn(storage: Storage, session_id: str) -> None:
     settings = get_settings()
-    await storage.record_turn(session_id, now=datetime.now(), ttl_hours=settings.session_ttl_hours)
+    await storage.record_turn(session_id, now=_now(), ttl_hours=settings.session_ttl_hours)
 
 
 async def conversation_context(storage: Storage, session_id: str) -> list[Question]:

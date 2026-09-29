@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
-from models import Question, Session, User
-from models.enums import AuthMethod, Platform
+from models import AdminUser, Question, Session, SystemConfig, Topic, User
+from models.enums import AdminRole, AuthMethod, Platform
 
 
 class MemoryStorage:
@@ -23,6 +23,9 @@ class MemoryStorage:
         self._questions: dict[str, Question] = {}
         self._likes: set[str] = set()
         self._rate: dict[str, int] = {}
+        self._topics: dict[str, Topic] = {}
+        self._system_config: dict[str, SystemConfig] = {}
+        self._admin_users: dict[str, AdminUser] = {}
         self._chunks: int = 0
         self._lock = asyncio.Lock()
 
@@ -32,7 +35,7 @@ class MemoryStorage:
         return self._users.get(uid)
 
     async def create_user(self, uid: str, auth_method: AuthMethod) -> User:
-        now = datetime.now()
+        now = datetime.now(UTC)
         user = User(
             uid=uid,
             auth_method=auth_method,
@@ -121,6 +124,49 @@ class MemoryStorage:
             key = f"{uid}:{bucket}"
             self._rate[key] = self._rate.get(key, 0) + 1
             return self._rate[key]
+
+    # --- topics --------------------------------------------------------------
+
+    async def save_topic(self, topic: Topic) -> None:
+        self._topics[topic.slug] = topic
+
+    async def get_topic(self, slug: str) -> Topic | None:
+        return self._topics.get(slug)
+
+    async def list_topics(self) -> list[Topic]:
+        return list(self._topics.values())
+
+    # --- system config -------------------------------------------------------
+
+    async def get_system_config(self, key: str) -> SystemConfig | None:
+        return self._system_config.get(key)
+
+    async def set_system_config(self, config: SystemConfig) -> None:
+        self._system_config[config.key] = config
+
+    # --- admin users ---------------------------------------------------------
+
+    async def get_admin_user(self, admin_id: str) -> AdminUser | None:
+        return self._admin_users.get(admin_id)
+
+    async def get_admin_user_by_email(self, email: str) -> AdminUser | None:
+        email_clean = email.strip().lower()
+        for user in self._admin_users.values():
+            if user.email.lower() == email_clean:
+                return user
+        return None
+
+    async def get_admin_user_by_refresh_token_hash(self, token_hash: str) -> AdminUser | None:
+        for user in self._admin_users.values():
+            if user.refresh_token_hash == token_hash:
+                return user
+        return None
+
+    async def save_admin_user(self, admin: AdminUser) -> None:
+        self._admin_users[admin.id] = admin
+
+    async def count_super_admins(self) -> int:
+        return sum(1 for u in self._admin_users.values() if u.role == AdminRole.super_admin)
 
     # --- corpus --------------------------------------------------------------
 

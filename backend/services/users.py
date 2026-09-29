@@ -7,7 +7,7 @@ are stored encrypted and are never returned by any API (TDD section 8).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from models import User
 from models.enums import AuthMethod
@@ -23,4 +23,4 @@ async def ensure_user(storage: Storage, uid: str, auth_method: AuthMethod) -> Us
 
 
 async def record_activity(storage: Storage, uid: str) -> None:
-    await storage.touch_user(uid, at=datetime.now())
+    await storage.touch_user(uid, at=datetime.now(UTC))

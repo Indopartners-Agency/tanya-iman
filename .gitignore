@@ -20,7 +20,11 @@ node_modules/
 .nuxt/
 .output/
 dist/
+**/dist
 *.tsbuildinfo
+
+# Tooling artifacts
+graphify-out/
 
 # Firebase
 .firebase/

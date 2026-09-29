@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -131,7 +131,7 @@ async def _persist_and_respond(
         model=model,
         prompt_version=prompt_version,
         latency_ms=latency_ms,
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     )
 
     await storage.save_question(question)

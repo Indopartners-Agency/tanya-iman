@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from models.enums import AnswerSource, AuthMethod, Platform, ValidatorCode
+from models.enums import AdminRole, AnswerSource, AuthMethod, Platform, ValidatorCode
 
 # --- Stored entities ---------------------------------------------------------
 
@@ -58,6 +58,26 @@ class Question(BaseModel):
     prompt_version: str | None = None
     latency_ms: int = 0
     created_at: datetime
+
+
+class Topic(BaseModel):
+    slug: str
+    name_id: str
+    name_en: str
+    curated_answer: str | None = None
+    curated_citations: list[Citation] = Field(default_factory=list)
+    curated_status: str = "draft"
+    updated_by: str | None = None
+    updated_at: datetime | None = None
+    question_count: int = 0
+    like_count: int = 0
+
+
+class SystemConfig(BaseModel):
+    key: str
+    value: str
+    updated_by: str | None = None
+    updated_at: datetime | None = None
 
 
 # --- Engine contract ---------------------------------------------------------
@@ -118,3 +138,91 @@ class HealthResponse(BaseModel):
     # Surfaced so that "staging is still running the stub" is visible in a
     # smoke check rather than discovered by a seeker.
     engine: str
+
+
+# --- Admin entities ----------------------------------------------------------
+
+
+class AdminUser(BaseModel):
+    id: str
+    email: str
+    password_hash: str
+    role: AdminRole
+    refresh_token_hash: str | None = None
+    created_at: datetime
+    last_login_at: datetime | None = None
+
+
+class AdminAuditLog(BaseModel):
+    id: str
+    admin_id: str
+    action: str
+    target_id: str
+    detail: str
+    created_at: datetime
+
+
+# --- Auth API models ---------------------------------------------------------
+
+
+class OTPRequestPayload(BaseModel):
+    channel: str = Field(..., pattern="^(sms|whatsapp)$")
+    phone: str
+
+
+class OTPRequestResponse(BaseModel):
+    status: str = "ok"
+    message: str | None = None
+
+
+class OTPVerifyPayload(BaseModel):
+    phone: str
+    code: str
+
+
+class OTPVerifyResponse(BaseModel):
+    custom_token: str
+    is_new_user: bool = False
+
+
+class ConvertPayload(BaseModel):
+    anonymous_uid: str
+
+
+class ConvertResponse(BaseModel):
+    status: str = "ok"
+    sessions_transferred: int
+    questions_transferred: int
+    likes_transferred: int
+
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AdminLoginResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    role: AdminRole
+    email: str
+
+
+class AdminRefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class AdminRefreshResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class AdminBootstrapRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AdminBootstrapResponse(BaseModel):
+    status: str = "ok"
+    admin_id: str

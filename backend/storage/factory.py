@@ -14,7 +14,10 @@ def get_storage() -> Storage:
         if settings.storage_backend == "firestore":
             from storage.firestore import FirestoreStorage
 
-            _instance = FirestoreStorage(project=settings.gcloud_project)
+            _instance = FirestoreStorage(
+                project=settings.gcloud_project,
+                database=settings.firestore_database,
+            )
         else:
             _instance = MemoryStorage()
     return _instance

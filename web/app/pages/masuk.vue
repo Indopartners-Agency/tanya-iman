@@ -84,9 +84,11 @@ function onBackspace(index: number) {
   if (index > 0) inputs.value[index - 1]?.focus()
 }
 
+const digitsComplete = computed(() => digits.value.every((d) => d !== ''))
+
 /** Section 6.2: auto-submit on the sixth character; no separate confirm tap. */
 function maybeSubmit() {
-  if (digits.value.every((d) => d !== '')) verify()
+  if (digitsComplete.value) verify()
 }
 
 async function verify() {
@@ -100,6 +102,20 @@ async function verify() {
     }
     // Phase 3 wires the real provider here.
     error.value = t('ui.otp_invalid')
+  } catch (err: any) {
+    error.value = err?.message || t('ui.otp_invalid')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function bypassDemo() {
+  busy.value = true
+  try {
+    await auth.signInAsGuest()
+    await router.push('/chat')
+  } catch (err: any) {
+    error.value = err?.message || 'Gagal masuk demo'
   } finally {
     busy.value = false
   }
@@ -131,6 +147,18 @@ function back() {
       <div class="mx-auto w-full max-w-[400px]">
         <!-- Phone entry -->
         <template v-if="step === 'phone'">
+          <div v-if="demo" class="mb-5 rounded-xl border border-info/30 bg-info-bg p-3.5 text-[13px] text-info">
+            <p class="font-medium">Mode Demo</p>
+            <p class="mt-1 text-info/90">Gunakan nomor telepon apa saja untuk mencoba alur, atau lewati langsung ke obrolan.</p>
+            <button
+              type="button"
+              class="mt-2.5 inline-flex min-h-[36px] items-center rounded-lg bg-info px-3 text-[12.5px] font-medium text-surface transition hover:opacity-90"
+              @click="bypassDemo"
+            >
+              Lewati ke Chat (Demo) &rarr;
+            </button>
+          </div>
+
           <h1 class="font-serif text-[26px] leading-tight text-primary">
             {{ channel === 'whatsapp' ? t('ui.login_whatsapp') : t('ui.login_sms') }}
           </h1>
@@ -173,6 +201,18 @@ function back() {
 
         <!-- OTP entry -->
         <template v-else>
+          <div v-if="demo" class="mb-5 rounded-xl border border-info/30 bg-info-bg p-3.5 text-[13px] text-info">
+            <p class="font-medium">Mode Demo</p>
+            <p class="mt-1 text-info/90">Masukkan 6 digit angka apa saja (misal: 000000) atau klik tombol di bawah untuk langsung masuk.</p>
+            <button
+              type="button"
+              class="mt-2.5 inline-flex min-h-[36px] items-center rounded-lg bg-info px-3 text-[12.5px] font-medium text-surface transition hover:opacity-90"
+              @click="bypassDemo"
+            >
+              Masuk Langsung (Demo) &rarr;
+            </button>
+          </div>
+
           <h1 class="font-serif text-[26px] leading-tight text-primary">
             {{ t('ui.otp_title') }}
           </h1>
@@ -193,8 +233,18 @@ function back() {
               class="h-14 w-full rounded-xl border border-strong bg-surface text-center font-mono text-[20px] text-primary outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15"
               @input="onDigit(index, $event)"
               @keydown.backspace="onBackspace(index)"
+              @keydown.enter="maybeSubmit"
             />
           </div>
+
+          <button
+            type="button"
+            class="mt-6 min-h-[52px] w-full rounded-xl bg-accent px-4 text-[15px] font-medium text-on-accent transition hover:bg-accent-hover disabled:opacity-40"
+            :disabled="!digitsComplete || busy"
+            @click="verify"
+          >
+            {{ busy ? 'Memverifikasi...' : 'Verifikasi kode' }}
+          </button>
 
           <p v-if="error" class="mt-3 text-[13px] text-warning">{{ error }}</p>
 

@@ -62,3 +62,9 @@ class ValidatorCode(StrEnum):
     v5_no_support = "V5_NO_SUPPORT"
     v5_low_overlap = "V5_LOW_OVERLAP"
     v5_external_entity = "V5_EXTERNAL_ENTITY"
+
+
+class AdminRole(StrEnum):
+    editor = "editor"
+    reviewer = "reviewer"
+    super_admin = "super_admin"

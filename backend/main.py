@@ -15,7 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from config import get_settings
-from routers import chat, health, sessions
+from routers import admin_auth, chat, health, sessions
 from services.guards import assert_crisis_script_approved
 
 logging.basicConfig(level=logging.INFO)
@@ -78,6 +78,15 @@ async def security_headers(request: Request, call_next) -> Response:
     return response
 
 
+# Dual-mount routes: root for current frontend client, and /api for TDD §4 spec
 app.include_router(health.router)
+app.include_router(health.router, prefix="/api")
+
 app.include_router(sessions.router)
+app.include_router(sessions.router, prefix="/api")
+
 app.include_router(chat.router)
+app.include_router(chat.router, prefix="/api")
+
+app.include_router(admin_auth.router, prefix="/admin/auth")
+app.include_router(admin_auth.router, prefix="/api/admin/auth")
