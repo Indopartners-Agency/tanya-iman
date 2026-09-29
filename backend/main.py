@@ -15,7 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from config import get_settings
-from routers import admin_auth, chat, health, sessions
+from routers import admin_auth, admin_data, chat, health, sessions
 from services.guards import assert_crisis_script_approved
 
 logging.basicConfig(level=logging.INFO)
@@ -90,3 +90,6 @@ app.include_router(chat.router, prefix="/api")
 
 app.include_router(admin_auth.router, prefix="/admin/auth")
 app.include_router(admin_auth.router, prefix="/api/admin/auth")
+
+app.include_router(admin_data.router, prefix="/admin")
+app.include_router(admin_data.router, prefix="/api/admin")

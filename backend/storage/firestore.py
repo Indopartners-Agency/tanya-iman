@@ -135,6 +135,63 @@ class FirestoreStorage:
         rows = [Question(**doc.to_dict()) async for doc in query.stream()]
         return list(reversed(rows))
 
+    async def list_questions(
+        self,
+        topic_slug: str | None = None,
+        is_refused: bool | None = None,
+        is_crisis: bool | None = None,
+        has_grounding: bool | None = None,
+        answer_source: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Question]:
+        query = self._db.collection(QUESTIONS)
+        if topic_slug:
+            query = query.where(filter=firestore.FieldFilter("topic_slug", "==", topic_slug))
+        if is_refused is not None:
+            query = query.where(filter=firestore.FieldFilter("is_refused", "==", is_refused))
+        if is_crisis is not None:
+            query = query.where(filter=firestore.FieldFilter("is_crisis", "==", is_crisis))
+        if has_grounding is not None:
+            query = query.where(filter=firestore.FieldFilter("has_grounding", "==", has_grounding))
+        if answer_source:
+            query = query.where(filter=firestore.FieldFilter("answer_source", "==", answer_source))
+
+        query = query.order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit)
+        if offset > 0:
+            query = query.offset(offset)
+
+        rows: list[Question] = []
+        async for doc in query.stream():
+            data = doc.to_dict()
+            data["citations"] = [Citation(**c) for c in data.get("citations", [])]
+            rows.append(Question(**data))
+        return rows
+
+    async def count_questions(
+        self,
+        topic_slug: str | None = None,
+        is_refused: bool | None = None,
+        is_crisis: bool | None = None,
+        has_grounding: bool | None = None,
+        answer_source: str | None = None,
+    ) -> int:
+        query = self._db.collection(QUESTIONS)
+        if topic_slug:
+            query = query.where(filter=firestore.FieldFilter("topic_slug", "==", topic_slug))
+        if is_refused is not None:
+            query = query.where(filter=firestore.FieldFilter("is_refused", "==", is_refused))
+        if is_crisis is not None:
+            query = query.where(filter=firestore.FieldFilter("is_crisis", "==", is_crisis))
+        if has_grounding is not None:
+            query = query.where(filter=firestore.FieldFilter("has_grounding", "==", has_grounding))
+        if answer_source:
+            query = query.where(filter=firestore.FieldFilter("answer_source", "==", answer_source))
+
+        agg = query.count()
+        result = await agg.get()
+        return int(result[0][0].value)
+
     # --- likes ---------------------------------------------------------------
 
     async def set_like(self, uid: str, question_id: str, liked: bool) -> int:

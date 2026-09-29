@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { gaps } from '~/demo/fixtures'
-
 /**
  * Admin UX section 12. The highest-value output of the product for editorial:
  * everything else tells them what they have, this tells them what is missing.
@@ -9,8 +7,20 @@ import { gaps } from '~/demo/fixtures'
  * corpus after the next ingestion run confirms the question is now answerable.
  */
 const { t } = useCopy()
+const api = useAdminApi()
 
-const sorted = computed(() => [...gaps].sort((a, b) => b.count - a.count))
+const gaps = ref<any[]>([])
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    gaps.value = await api.getGaps()
+  } finally {
+    loading.value = false
+  }
+})
+
+const sorted = computed(() => [...gaps.value].sort((a, b) => b.count - a.count))
 
 const columns = [
   { key: 'canonical', label: t('gaps.col_canonical') },
@@ -21,6 +31,7 @@ const columns = [
 ]
 
 function timeLabel(iso: string): string {
+  if (!iso) return '-'
   return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
 }
 </script>
@@ -29,7 +40,11 @@ function timeLabel(iso: string): string {
   <div>
     <PageHeader :title="t('gaps.title')" :subtitle="t('gaps.subtitle')" />
 
-    <DataTable :columns="columns">
+    <div v-if="loading" class="py-12 text-center text-[14px] text-secondary">
+      Memuat daftar kekosongan konten...
+    </div>
+
+    <DataTable v-else :columns="columns">
       <tr
         v-for="gap in sorted"
         :key="gap.id"
@@ -40,7 +55,7 @@ function timeLabel(iso: string): string {
         <td class="px-3 py-2.5 text-[12.5px] text-secondary">{{ timeLabel(gap.lastAsked) }}</td>
         <td class="px-3 py-2.5">
           <StatusChip
-            :label="gap.nearestTopic"
+            :label="gap.nearestTopic || 'Lainnya'"
             :tone="gap.nearestTopic === 'Lainnya' ? 'warning' : 'neutral'"
           />
         </td>

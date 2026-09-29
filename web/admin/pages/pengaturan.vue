@@ -10,6 +10,24 @@ import { audit } from '~/demo/fixtures'
  * marker. Shipping an invented number here would be worse than showing none.
  */
 const { t } = useCopy()
+const api = useAdminApi()
+
+const config = ref<Record<string, string>>({
+  retention_months: '12',
+  rate_limit_per_hour: '30',
+  similarity_threshold: '0.72',
+  contact_name: '',
+  contact_number: '',
+})
+
+onMounted(async () => {
+  try {
+    const data = await api.getConfig()
+    if (data) config.value = { ...config.value, ...data }
+  } catch (e) {
+    console.warn('Failed to load system config:', e)
+  }
+})
 
 const columns = [
   { key: 'actor', label: t('settings.col_actor') },
@@ -40,15 +58,15 @@ function timeLabel(iso: string): string {
           <dl class="mt-3 space-y-3">
             <div>
               <dt class="text-[13px] text-primary">{{ t('settings.retention') }}</dt>
-              <dd class="tabular text-[13px] text-secondary">12</dd>
+              <dd class="tabular text-[13px] text-secondary">{{ config.retention_months }} bulan</dd>
             </div>
             <div>
               <dt class="text-[13px] text-primary">{{ t('settings.rate_limit') }}</dt>
-              <dd class="tabular text-[13px] text-secondary">30</dd>
+              <dd class="tabular text-[13px] text-secondary">{{ config.rate_limit_per_hour }} per jam</dd>
             </div>
             <div>
               <dt class="text-[13px] text-primary">{{ t('settings.similarity') }}</dt>
-              <dd class="tabular text-[13px] text-secondary">0,72</dd>
+              <dd class="tabular text-[13px] text-secondary">{{ config.similarity_threshold }}</dd>
               <p class="mt-1 rounded-lg bg-warning-bg px-2.5 py-1.5 text-[12.5px] text-warning">
                 {{ t('settings.similarity_warning') }}
               </p>
@@ -67,6 +85,7 @@ function timeLabel(iso: string): string {
             {{ t('settings.contact_name') }}
           </label>
           <input
+            v-model="config.contact_name"
             type="text"
             disabled
             class="mt-1 min-h-[40px] w-full rounded-lg border border-subtle bg-raised px-3 text-[13.5px] text-secondary"
@@ -76,6 +95,7 @@ function timeLabel(iso: string): string {
             {{ t('settings.contact_number') }}
           </label>
           <input
+            v-model="config.contact_number"
             type="tel"
             disabled
             class="mt-1 min-h-[40px] w-full rounded-lg border border-subtle bg-raised px-3 text-[13.5px] text-secondary"

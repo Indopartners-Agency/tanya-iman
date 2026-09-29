@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { questions, topics, type QuestionRow } from '~/demo/fixtures'
+import type { QuestionRow } from '~/demo/fixtures'
 
 /**
  * Admin UX section 7. Seven columns, filters as removable chips, CSV export
@@ -14,10 +14,28 @@ import { questions, topics, type QuestionRow } from '~/demo/fixtures'
 const { t } = useCopy()
 const route = useRoute()
 const router = useRouter()
+const api = useAdminApi()
+
+const questions = ref<QuestionRow[]>([])
+const topics = ref<any[]>([])
+const loading = ref(true)
 
 const search = ref(String(route.query.q ?? ''))
 const topicFilter = ref(String(route.query.topik ?? ''))
 const resultFilter = ref(String(route.query.hasil ?? ''))
+
+onMounted(async () => {
+  try {
+    const [qData, tData] = await Promise.all([
+      api.getQuestions(),
+      api.getTopics(),
+    ])
+    questions.value = qData as QuestionRow[]
+    topics.value = tData
+  } finally {
+    loading.value = false
+  }
+})
 
 watch([search, topicFilter, resultFilter], ([q, topik, hasil]) => {
   router.replace({
@@ -30,7 +48,7 @@ watch([search, topicFilter, resultFilter], ([q, topik, hasil]) => {
 })
 
 const rows = computed(() =>
-  questions.filter((row) => {
+  questions.value.filter((row) => {
     if (search.value && !row.question.toLowerCase().includes(search.value.toLowerCase()))
       return false
     if (topicFilter.value && row.topicSlug !== topicFilter.value) return false
@@ -45,7 +63,7 @@ const activeFilters = computed(() => [
     ? [
         {
           key: 'topik',
-          label: topics.find((tp) => tp.slug === topicFilter.value)?.label ?? topicFilter.value,
+          label: topics.value.find((tp) => tp.slug === topicFilter.value)?.label ?? topicFilter.value,
         },
       ]
     : []),

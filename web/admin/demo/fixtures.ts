@@ -31,6 +31,8 @@ export interface TopicRow {
   curated: 'none' | 'draft' | 'published'
   curatedBy?: string
   curatedAt?: string
+  curatedAnswer?: string
+  curatedCitations?: any[]
   refusalRate: number
 }
 

@@ -122,6 +122,60 @@ class MemoryStorage:
         rows.sort(key=lambda q: q.created_at)
         return rows[-limit:]
 
+    async def list_questions(
+        self,
+        topic_slug: str | None = None,
+        is_refused: bool | None = None,
+        is_crisis: bool | None = None,
+        has_grounding: bool | None = None,
+        answer_source: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Question]:
+        rows = list(self._questions.values())
+        if topic_slug:
+            rows = [q for q in rows if q.topic_slug == topic_slug]
+        if is_refused is not None:
+            rows = [q for q in rows if q.is_refused == is_refused]
+        if is_crisis is not None:
+            rows = [q for q in rows if q.is_crisis == is_crisis]
+        if has_grounding is not None:
+            rows = [q for q in rows if q.has_grounding == has_grounding]
+        if answer_source:
+            rows = [
+                q
+                for q in rows
+                if getattr(q.answer_source, "value", q.answer_source) == answer_source
+            ]
+
+        rows.sort(key=lambda q: q.created_at, reverse=True)
+        return rows[offset : offset + limit]
+
+    async def count_questions(
+        self,
+        topic_slug: str | None = None,
+        is_refused: bool | None = None,
+        is_crisis: bool | None = None,
+        has_grounding: bool | None = None,
+        answer_source: str | None = None,
+    ) -> int:
+        rows = list(self._questions.values())
+        if topic_slug:
+            rows = [q for q in rows if q.topic_slug == topic_slug]
+        if is_refused is not None:
+            rows = [q for q in rows if q.is_refused == is_refused]
+        if is_crisis is not None:
+            rows = [q for q in rows if q.is_crisis == is_crisis]
+        if has_grounding is not None:
+            rows = [q for q in rows if q.has_grounding == has_grounding]
+        if answer_source:
+            rows = [
+                q
+                for q in rows
+                if getattr(q.answer_source, "value", q.answer_source) == answer_source
+            ]
+        return len(rows)
+
     # --- likes ---------------------------------------------------------------
 
     async def set_like(self, uid: str, question_id: str, liked: bool) -> int:

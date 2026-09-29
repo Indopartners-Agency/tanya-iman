@@ -1,0 +1,16 @@
+{
+  "projects": {},
+  "targets": {
+    "project-philip-501910": {
+      "hosting": {
+        "tanya-iman-admin": [
+          "tanya-iman-admin-dev"
+        ],
+        "tanya-iman-app": [
+          "tanya-iman-app-dev"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

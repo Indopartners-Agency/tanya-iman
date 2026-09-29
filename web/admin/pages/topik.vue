@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { topics } from '~/demo/fixtures'
 import { useSessionStore } from '~/stores/session'
 
 /**
@@ -9,14 +8,32 @@ import { useSessionStore } from '~/stores/session'
  */
 const { t } = useCopy()
 const session = useSessionStore()
+const router = useRouter()
+const api = useAdminApi()
 
-const sorted = computed(() => [...topics].sort((a, b) => b.questions - a.questions))
+const topics = ref<any[]>([])
+const loading = ref(true)
 
-const totalQuestions = computed(() => topics.reduce((sum, tp) => sum + tp.questions, 0))
-const lainnya = computed(() => topics.find((tp) => tp.slug === 'lainnya'))
+onMounted(async () => {
+  if (!session.isAuthenticated) {
+    await router.replace('/masuk')
+    return
+  }
+
+  try {
+    topics.value = await api.getTopics()
+  } finally {
+    loading.value = false
+  }
+})
+
+const sorted = computed(() => [...topics.value].sort((a, b) => b.questions - a.questions))
+
+const totalQuestions = computed(() => topics.value.reduce((sum, tp) => sum + tp.questions, 0))
+const lainnya = computed(() => topics.value.find((tp) => tp.slug === 'lainnya'))
 /** PRD Appendix A: past 10%, the taxonomy needs a new topic. */
 const lainnyaHigh = computed(
-  () => !!lainnya.value && lainnya.value.questions / totalQuestions.value > 0.1,
+  () => !!lainnya.value && totalQuestions.value > 0 && lainnya.value.questions / totalQuestions.value > 0.1,
 )
 
 const columns = [
@@ -37,7 +54,11 @@ const columns = [
       {{ t('topics.lainnya_warning') }}
     </p>
 
-    <DataTable :columns="columns">
+    <div v-if="loading" class="py-12 text-center text-[14px] text-secondary">
+      Memuat daftar topik...
+    </div>
+
+    <DataTable v-else :columns="columns">
       <tr
         v-for="topic in sorted"
         :key="topic.slug"
@@ -48,7 +69,7 @@ const columns = [
         <td class="px-3 py-2.5 text-right text-[13px] text-secondary">{{ topic.likes }}</td>
         <td class="px-3 py-2.5">
           <StatusChip
-            :label="t(`topics.curated_${topic.curated}`)"
+            :label="t(`topics.curated_${topic.curated || 'none'}`)"
             :tone="
               topic.curated === 'published'
                 ? 'success'
@@ -58,14 +79,14 @@ const columns = [
             "
           />
           <span v-if="topic.curatedBy" class="meta mt-0.5 block">
-            {{ topic.curatedBy }} · {{ topic.curatedAt }}
+            {{ topic.curatedBy }}
           </span>
         </td>
         <td
           class="px-3 py-2.5 text-right text-[13px]"
-          :class="topic.refusalRate > 0.15 ? 'text-warning' : 'text-secondary'"
+          :class="(topic.refusalRate || 0) > 0.15 ? 'text-warning' : 'text-secondary'"
         >
-          {{ Math.round(topic.refusalRate * 100) }}%
+          {{ Math.round((topic.refusalRate || 0) * 100) }}%
         </td>
         <td class="px-3 py-2.5 text-right">
           <NuxtLink
@@ -73,7 +94,7 @@ const columns = [
             :to="`/editor/${topic.slug}`"
             class="text-[13px] text-accent underline underline-offset-2"
           >
-            {{ topic.curated === 'none' ? t('topics.write') : t('topics.edit') }}
+            {{ (!topic.curated || topic.curated === 'none') ? t('topics.write') : t('topics.edit') }}
           </NuxtLink>
         </td>
       </tr>

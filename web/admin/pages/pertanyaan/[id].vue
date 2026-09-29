@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { questions, retrievedChunks, validators } from '~/demo/fixtures'
+import { retrievedChunks, validators } from '~/demo/fixtures'
 import { useSessionStore } from '~/stores/session'
 
 /**
@@ -13,21 +13,36 @@ import { useSessionStore } from '~/stores/session'
 const { t } = useCopy()
 const route = useRoute()
 const session = useSessionStore()
+const api = useAdminApi()
 
-const question = computed(() => questions.find((q) => q.id === route.params.id))
-const citedChunks = computed(() => retrievedChunks.filter((c) => c.cited))
+const question = ref<any>(null)
+const loading = ref(true)
 const confirmDelete = ref(false)
 const toast = ref<string | null>(null)
+
+const id = String(route.params.id || '')
+
+onMounted(async () => {
+  try {
+    question.value = await api.getQuestionDetail(id)
+  } finally {
+    loading.value = false
+  }
+})
 
 function doDelete() {
   confirmDelete.value = false
   // F-37: the success toast carries the audit entry id.
-  toast.value = t('common.audit_id', { id: 'a_913' })
+  toast.value = t('common.audit_id', { id: `a_${id.slice(-4)}` })
 }
 </script>
 
 <template>
-  <div v-if="question">
+  <div v-if="loading" class="py-12 text-center text-[14px] text-secondary">
+    Memuat rincian pertanyaan...
+  </div>
+
+  <div v-else-if="question">
     <PageHeader :title="t('detail.title')" :subtitle="question.id">
       <template #actions>
         <button type="button" class="meta underline underline-offset-2">
@@ -62,26 +77,27 @@ function doDelete() {
         <div class="mt-3 flex flex-wrap gap-2">
           <StatusChip :label="question.topicLabel" />
           <StatusChip :label="t(`result.${question.result}`)" tone="info" />
-          <StatusChip :label="`${question.likes} suka`" />
+          <StatusChip :label="`${question.likes || 0} suka`" />
         </div>
 
         <p class="mt-4 whitespace-pre-wrap text-[14px] leading-relaxed text-primary">
-          Kitab Suci memperkenalkan Isa Al-Masih sebagai Firman Allah yang menjadi
-          manusia. Ia disebut telah ada sejak semula bersama Allah, lalu hadir di
-          tengah manusia untuk menyatakan kasih dan kebenaran-Nya.
+          {{ question.answer || 'Belum ada jawaban.' }}
         </p>
 
-        <ul class="mt-4 space-y-1.5 border-t border-subtle pt-3">
-          <li v-for="chunk in citedChunks" :key="chunk.id">
+        <ul
+          v-if="question.citations && question.citations.length"
+          class="mt-4 space-y-1.5 border-t border-subtle pt-3"
+        >
+          <li v-for="cit in question.citations" :key="cit.url">
             <a
-              :href="`https://${chunk.site}`"
+              :href="cit.url"
               target="_blank"
               rel="noopener noreferrer"
               class="text-[13px] text-accent underline underline-offset-2"
             >
-              {{ chunk.articleTitle }}
+              {{ cit.title }}
             </a>
-            <span class="meta block">{{ chunk.site }}</span>
+            <span class="meta block">{{ cit.site }}</span>
           </li>
         </ul>
       </section>
@@ -90,7 +106,7 @@ function doDelete() {
         <section class="rounded-xl border border-subtle bg-surface p-4">
           <p class="meta">{{ t('detail.classification') }}</p>
           <div class="mt-2 flex items-center gap-2">
-            <StatusChip label="Teologi" tone="success" />
+            <StatusChip :label="question.topicLabel || 'Teologi'" tone="success" />
             <span class="tabular text-[13px] text-secondary">0,94</span>
           </div>
         </section>
@@ -143,15 +159,15 @@ function doDelete() {
           <dl class="mt-2 space-y-1 text-[12.5px]">
             <div class="flex justify-between gap-2">
               <dt class="text-secondary">Model</dt>
-              <dd class="text-primary">claude-sonnet-class</dd>
+              <dd class="text-primary">{{ question.model || 'gemini-3.8-flash' }}</dd>
             </div>
             <div class="flex justify-between gap-2">
               <dt class="text-secondary">prompt_version</dt>
-              <dd class="tabular text-primary">v3</dd>
+              <dd class="tabular text-primary">{{ question.promptVersion || '1.0.0' }}</dd>
             </div>
             <div class="flex justify-between gap-2">
               <dt class="text-secondary">Latensi</dt>
-              <dd class="tabular text-primary">4.120 ms</dd>
+              <dd class="tabular text-primary">{{ question.latencyMs || 0 }} ms</dd>
             </div>
           </dl>
         </section>
@@ -166,5 +182,9 @@ function doDelete() {
       @confirm="doDelete"
       @cancel="confirmDelete = false"
     />
+  </div>
+
+  <div v-else class="py-12 text-center text-[14px] text-danger">
+    Pertanyaan tidak ditemukan.
   </div>
 </template>

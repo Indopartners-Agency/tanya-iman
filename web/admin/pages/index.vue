@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { dashboard, gaps, reviewCount, topics } from '~/demo/fixtures'
 import { useSessionStore } from '~/stores/session'
 
 /**
@@ -12,21 +11,59 @@ import { useSessionStore } from '~/stores/session'
 const { t } = useCopy()
 const session = useSessionStore()
 const router = useRouter()
+const api = useAdminApi()
 
-onMounted(() => {
-  if (!session.isAuthenticated) router.replace('/masuk')
+const loading = ref(true)
+const dashboard = ref({
+  volumeThisWeek: 0,
+  volumeChangePct: 15,
+  validatorPassPct: 100,
+  answerRatePct: 100,
+  likeRatePct: 0,
+})
+const gaps = ref<any[]>([])
+const reviewCount = ref(0)
+const topTopics = ref<any[]>([])
+
+onMounted(async () => {
+  if (!session.isAuthenticated) {
+    await router.replace('/masuk')
+    return
+  }
+
+  try {
+    const data = await api.getDashboard()
+    dashboard.value = {
+      volumeThisWeek: data.total_questions,
+      volumeChangePct: data.volume_change_pct,
+      validatorPassPct: data.validator_pass_pct,
+      answerRatePct: data.answer_rate_pct,
+      likeRatePct: data.like_rate_pct,
+    }
+    reviewCount.value = data.review_items
+    topTopics.value = data.top_topics || []
+
+    const gapsData = await api.getGaps()
+    gaps.value = gapsData || []
+  } finally {
+    loading.value = false
+  }
 })
 
-const validatorFailing = computed(() => dashboard.validatorPassPct < 100)
-const topFive = computed(() => topics.slice(0, 5))
-const largestGap = computed(() => gaps[0])
+const validatorFailing = computed(() => dashboard.value.validatorPassPct < 100)
+const topFive = computed(() => topTopics.value.slice(0, 5))
+const largestGap = computed(() => gaps.value[0])
 </script>
 
 <template>
   <div>
     <PageHeader :title="t('dashboard.title')" :subtitle="t('dashboard.subtitle')" />
 
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div v-if="loading" class="py-12 text-center text-[14px] text-secondary">
+      Memuat data analitik...
+    </div>
+
+    <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <StatCard
         :label="t('dashboard.volume')"
         :value="String(dashboard.volumeThisWeek)"

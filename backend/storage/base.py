@@ -53,6 +53,26 @@ class Storage(Protocol):
 
     async def recent_questions(self, session_id: str, limit: int) -> list[Question]: ...
 
+    async def list_questions(
+        self,
+        topic_slug: str | None = None,
+        is_refused: bool | None = None,
+        is_crisis: bool | None = None,
+        has_grounding: bool | None = None,
+        answer_source: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Question]: ...
+
+    async def count_questions(
+        self,
+        topic_slug: str | None = None,
+        is_refused: bool | None = None,
+        is_crisis: bool | None = None,
+        has_grounding: bool | None = None,
+        answer_source: str | None = None,
+    ) -> int: ...
+
     # --- likes ---------------------------------------------------------------
     async def set_like(self, uid: str, question_id: str, liked: bool) -> int:
         """Idempotent by construction — the like key is ``{uid}_{question_id}``.

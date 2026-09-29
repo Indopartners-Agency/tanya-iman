@@ -14,7 +14,7 @@ const session = useSessionStore()
 const router = useRouter()
 const demo = useDemoMode()
 
-const email = ref('siti@tanyaiman.id')
+const email = ref('admin@tanyaiman.id')
 const password = ref('')
 const role = ref<AdminRole>('editor')
 const error = ref<string | null>(null)

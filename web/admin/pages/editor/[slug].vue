@@ -15,14 +15,33 @@ import { articles, topics } from '~/demo/fixtures'
  */
 const { t } = useCopy()
 const route = useRoute()
+const router = useRouter()
+const api = useAdminApi()
 
-const topic = computed(() => topics.find((tp) => tp.slug === route.params.slug))
+const topic = ref<any>(null)
+const loading = ref(true)
 
 const answer = ref('')
 const selectedCitations = ref<string[]>([])
 const citationSearch = ref('')
 const showPublishConfirm = ref(false)
 const toast = ref<string | null>(null)
+const error = ref<string | null>(null)
+const busy = ref(false)
+
+const slug = String(route.params.slug || '')
+
+onMounted(async () => {
+  try {
+    const data = await api.getTopic(slug)
+    topic.value = data
+    if (data?.curatedAnswer) {
+      answer.value = data.curatedAnswer
+    }
+  } finally {
+    loading.value = false
+  }
+})
 
 /** V1 — length, counted with the backend's own function. */
 const words = computed(() => countWords(answer.value))
@@ -65,13 +84,31 @@ function toggleCitation(id: string) {
   else if (selectedCitations.value.length < 2) selectedCitations.value.push(id)
 }
 
-function saveDraft() {
-  toast.value = t('common.saved')
+async function saveDraft() {
+  busy.value = true
+  error.value = null
+  try {
+    await api.updateTopicAnswer(slug, answer.value, 'draft', [])
+    toast.value = t('common.saved')
+  } catch (e: any) {
+    error.value = e?.message || 'Gagal menyimpan draf'
+  } finally {
+    busy.value = false
+  }
 }
 
-function publish() {
+async function publish() {
   showPublishConfirm.value = false
-  toast.value = t('common.saved')
+  busy.value = true
+  error.value = null
+  try {
+    await api.updateTopicAnswer(slug, answer.value, 'published', [])
+    toast.value = t('common.saved')
+  } catch (e: any) {
+    error.value = e?.message || 'Gagal mempublikasikan jawaban'
+  } finally {
+    busy.value = false
+  }
 }
 </script>
 
