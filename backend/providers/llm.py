@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import json
+import logging
+import re
 from typing import Any, Protocol
 
+import httpx
+
 from config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class LLMProvider(Protocol):
@@ -48,21 +55,86 @@ class FakeLLM:
         }
 
 
+class GeminiLLM:
+    """Gemini model provider using Google Generative Language REST API."""
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gemini-3.8-flash",
+        timeout: float = 7.0,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self.api_key = api_key
+        self.model = model
+        self.timeout = timeout
+        self._client = client
+        self.name = f"gemini:{model}"
+
+    async def complete_json(
+        self, system: str, user: str, *, max_tokens: int = 700, temperature: float = 0.4
+    ) -> dict[str, Any]:
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{self.model}:generateContent?key={self.api_key}"
+        )
+        payload = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": user}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
+        }
+
+        async def _call(cli: httpx.AsyncClient) -> dict[str, Any]:
+            resp = await cli.post(url, json=payload, timeout=self.timeout)
+            if resp.status_code != 200:
+                logger.error("Gemini API error %d: %s", resp.status_code, resp.text)
+                raise RuntimeError(f"Gemini API returned status {resp.status_code}: {resp.text}")
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise RuntimeError("No candidate returned by Gemini API")
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if not parts:
+                raise RuntimeError("No content parts in Gemini API response")
+            raw_text = parts[0].get("text", "").strip()
+
+            # Clean markdown codeblocks if model returned ```json ... ```
+            cleaned = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.MULTILINE)
+            cleaned = re.sub(r"\s*```$", "", cleaned, flags=re.MULTILINE).strip()
+            return json.loads(cleaned)
+
+        if self._client is not None:
+            return await _call(self._client)
+        async with httpx.AsyncClient() as client:
+            return await _call(client)
+
+
 _instance: LLMProvider | None = None
 
 
-def get_llm() -> LLMProvider:
+def get_llm(fallback: bool = False) -> LLMProvider:
     global _instance
+    settings = get_settings()
+    provider_name = settings.llm_fallback_provider if fallback else settings.llm_provider
+    model_name = settings.llm_fallback_model if fallback else settings.llm_model
+
+    if fallback:
+        if provider_name == "gemini":
+            return GeminiLLM(api_key=settings.llm_api_key, model=model_name)
+        return FakeLLM()
+
     if _instance is None:
-        settings = get_settings()
-        if settings.llm_provider == "fake":
+        if provider_name == "fake":
             _instance = FakeLLM()
-        else:  # pragma: no cover - real providers land in Phase 5
-            raise NotImplementedError(
-                f"LLM provider '{settings.llm_provider}' is not implemented yet. "
-                "Real providers land in Phase 5 (PIP Task 5.4), and only after "
-                "Zero Data Retention terms are confirmed in writing (PIP B3)."
-            )
+        elif provider_name == "gemini":
+            _instance = GeminiLLM(api_key=settings.llm_api_key, model=model_name)
+        else:
+            raise NotImplementedError(f"LLM provider '{provider_name}' is not implemented.")
     return _instance
 
 

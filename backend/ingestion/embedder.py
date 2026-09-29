@@ -151,9 +151,9 @@ class VertexAIEmbedder:
 def get_embedder() -> Embedder:
     """Factory returning configured embedder based on environment."""
     settings = get_settings()
-    if settings.gcp_project and not settings.is_development:
+    if settings.gcloud_project and not settings.is_development:
         try:
-            return VertexAIEmbedder(project_id=settings.gcp_project)
+            return VertexAIEmbedder(project_id=settings.gcloud_project)
         except Exception:
             pass
     return DeterministicEmbedder()
