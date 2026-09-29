@@ -17,12 +17,14 @@ from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
 from google.cloud.firestore_v1.vector import Vector
 
 from models import (
+    AdminAuditLog,
     AdminUser,
     Article,
     ArticleChunk,
     Citation,
     FlaggedChunk,
     Question,
+    QuestionCluster,
     Session,
     SystemConfig,
     Topic,
@@ -41,6 +43,8 @@ FLAGGED_CHUNKS = "flagged_chunks"
 TOPICS = "topics"
 SYSTEM_CONFIG = "system_config"
 ADMIN_USERS = "admin_users"
+AUDIT_LOGS = "audit_logs"
+CLUSTERS = "clusters"
 
 
 class FirestoreStorage:
@@ -483,3 +487,67 @@ class FirestoreStorage:
         async for doc in query.stream():
             flagged.append(FlaggedChunk(**doc.to_dict()))
         return flagged
+
+    # --- audit log (F-37) ----------------------------------------------------
+
+    async def save_audit_log(self, entry: AdminAuditLog) -> None:
+        await self._db.collection(AUDIT_LOGS).document(entry.id).set(entry.model_dump())
+
+    async def list_audit_logs(self, limit: int = 50) -> list[AdminAuditLog]:
+        query = (
+            self._db.collection(AUDIT_LOGS)
+            .order_by("created_at", direction=firestore.Query.DESCENDING)
+            .limit(limit)
+        )
+        logs: list[AdminAuditLog] = []
+        async for doc in query.stream():
+            logs.append(AdminAuditLog(**doc.to_dict()))
+        return logs
+
+    # --- clusters (F-22) -----------------------------------------------------
+
+    async def save_cluster(self, cluster: QuestionCluster) -> None:
+        await self._db.collection(CLUSTERS).document(cluster.id).set(cluster.model_dump())
+
+    async def get_cluster(self, cluster_id: str) -> QuestionCluster | None:
+        snap = await self._db.collection(CLUSTERS).document(cluster_id).get()
+        if not snap.exists:
+            return None
+        return QuestionCluster(**snap.to_dict())
+
+    async def list_clusters(self, topic_slug: str | None = None) -> list[QuestionCluster]:
+        query = self._db.collection(CLUSTERS)
+        if topic_slug:
+            query = query.where(filter=firestore.FieldFilter("topic_slug", "==", topic_slug))
+        clusters: list[QuestionCluster] = []
+        async for doc in query.stream():
+            clusters.append(QuestionCluster(**doc.to_dict()))
+        clusters.sort(key=lambda c: len(c.question_ids), reverse=True)
+        return clusters
+
+    async def delete_cluster(self, cluster_id: str) -> None:
+        await self._db.collection(CLUSTERS).document(cluster_id).delete()
+
+    # --- retention purge (F-37) ----------------------------------------------
+
+    async def purge_questions_older_than(self, cutoff: datetime) -> int:
+        query = self._db.collection(QUESTIONS).where(
+            filter=firestore.FieldFilter("created_at", "<", cutoff)
+        )
+        deleted = 0
+        batch = self._db.batch()
+        batch_count = 0
+
+        async for doc in query.stream():
+            batch.delete(doc.reference)
+            batch_count += 1
+            deleted += 1
+            if batch_count >= 400:
+                await batch.commit()
+                batch = self._db.batch()
+                batch_count = 0
+
+        if batch_count > 0:
+            await batch.commit()
+
+        return deleted

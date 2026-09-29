@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { clusters } from '~/demo/fixtures'
 import { useSessionStore } from '~/stores/session'
 
 /**
@@ -12,11 +11,27 @@ import { useSessionStore } from '~/stores/session'
  */
 const { t } = useCopy()
 const session = useSessionStore()
+const api = useAdminApi()
+
+const clusters = ref<any[]>([])
+const loading = ref(true)
+const error = ref<string | null>(null)
+
+onMounted(async () => {
+  try {
+    clusters.value = await api.getClusters()
+  } catch (e: any) {
+    error.value = e?.message || 'Gagal memuat kluster.'
+  } finally {
+    loading.value = false
+  }
+})
 
 const expanded = ref<string | null>(null)
-const sorted = computed(() => [...clusters].sort((a, b) => b.count - a.count))
+const sorted = computed(() => [...clusters.value].sort((a, b) => b.count - a.count))
 
 function timeLabel(iso: string): string {
+  if (!iso) return '-'
   return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
 }
 </script>
@@ -25,7 +40,13 @@ function timeLabel(iso: string): string {
   <div>
     <PageHeader :title="t('clusters.title')" />
 
-    <div class="space-y-2">
+    <div v-if="loading" class="py-12 text-center text-secondary">Memuat…</div>
+    <div v-else-if="error" class="py-8 text-center text-sm text-red-500">{{ error }}</div>
+    <div v-else-if="sorted.length === 0" class="py-12 text-center text-secondary text-sm">
+      Belum ada kluster pertanyaan.
+    </div>
+
+    <div v-else class="space-y-2">
       <div
         v-for="cluster in sorted"
         :key="cluster.id"
@@ -60,7 +81,7 @@ function timeLabel(iso: string): string {
           </ul>
           <NuxtLink
             v-if="session.canEdit"
-            to="/editor/pengampunan"
+            :to="`/editor/${cluster.topicSlug}`"
             class="mt-3 inline-block text-[13px] text-accent underline underline-offset-2"
           >
             {{ t('clusters.make_curated') }}

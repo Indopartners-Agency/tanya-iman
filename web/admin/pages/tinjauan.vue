@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { reviews } from '~/demo/fixtures'
-
 /**
  * Admin UX section 13. One worklist, four sources.
  *
@@ -9,8 +7,27 @@ import { reviews } from '~/demo/fixtures'
  * portal.
  */
 const { t } = useCopy()
+const api = useAdminApi()
 
-const items = ref([...reviews])
+const items = ref<any[]>([])
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    const data = await api.getReviews()
+    items.value = data.map((d: any) => ({
+      id: d.id,
+      type: d.type || 'validator',
+      summary: d.summary || '',
+      at: d.at || '',
+      reviewed: d.reviewed || false,
+    }))
+  } catch (e) {
+    console.warn('Failed to load reviews:', e)
+  } finally {
+    loading.value = false
+  }
+})
 
 const toneFor: Record<string, 'warning' | 'danger' | 'info'> = {
   ambiguous: 'warning',
@@ -25,6 +42,7 @@ function markReviewed(id: string) {
 }
 
 function timeLabel(iso: string): string {
+  if (!iso) return '-'
   return new Date(iso).toLocaleString('id-ID', {
     day: '2-digit',
     month: 'short',
@@ -49,7 +67,12 @@ const columns = [
       {{ t('review.sensitive') }}
     </p>
 
-    <DataTable :columns="columns">
+    <div v-if="loading" class="py-12 text-center text-secondary">Memuat…</div>
+    <div v-else-if="items.length === 0" class="py-12 text-center text-secondary text-sm">
+      Tidak ada item yang perlu ditinjau.
+    </div>
+
+    <DataTable v-else :columns="columns">
       <tr
         v-for="item in items"
         :key="item.id"

@@ -14,11 +14,13 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from models import (
+    AdminAuditLog,
     AdminUser,
     Article,
     ArticleChunk,
     FlaggedChunk,
     Question,
+    QuestionCluster,
     Session,
     SystemConfig,
     Topic,
@@ -51,6 +53,8 @@ class MemoryStorage:
         self._articles: dict[str, Article] = {}
         self._chunks_store: dict[str, ArticleChunk] = {}
         self._flagged_chunks: dict[str, FlaggedChunk] = {}
+        self._audit_logs: list[AdminAuditLog] = []
+        self._clusters: dict[str, QuestionCluster] = {}
         self._chunks: int = 0
         self._lock = asyncio.Lock()
 
@@ -331,6 +335,41 @@ class MemoryStorage:
         if decision is not None:
             flagged = [f for f in flagged if f.decision == decision]
         return flagged
+
+    # --- audit log (F-37) ----------------------------------------------------
+
+    async def save_audit_log(self, entry: AdminAuditLog) -> None:
+        self._audit_logs.append(entry)
+
+    async def list_audit_logs(self, limit: int = 50) -> list[AdminAuditLog]:
+        logs = sorted(self._audit_logs, key=lambda a: a.created_at, reverse=True)
+        return logs[:limit]
+
+    # --- clusters (F-22) -----------------------------------------------------
+
+    async def save_cluster(self, cluster: QuestionCluster) -> None:
+        self._clusters[cluster.id] = cluster
+
+    async def get_cluster(self, cluster_id: str) -> QuestionCluster | None:
+        return self._clusters.get(cluster_id)
+
+    async def list_clusters(self, topic_slug: str | None = None) -> list[QuestionCluster]:
+        clusters = list(self._clusters.values())
+        if topic_slug:
+            clusters = [c for c in clusters if c.topic_slug == topic_slug]
+        clusters.sort(key=lambda c: len(c.question_ids), reverse=True)
+        return clusters
+
+    async def delete_cluster(self, cluster_id: str) -> None:
+        self._clusters.pop(cluster_id, None)
+
+    # --- retention purge (F-37) ----------------------------------------------
+
+    async def purge_questions_older_than(self, cutoff: datetime) -> int:
+        to_delete = [qid for qid, q in self._questions.items() if q.created_at < cutoff]
+        for qid in to_delete:
+            del self._questions[qid]
+        return len(to_delete)
 
     # --- test helpers --------------------------------------------------------
 

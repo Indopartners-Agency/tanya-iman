@@ -81,6 +81,19 @@ class Topic(BaseModel):
     like_count: int = 0
 
 
+class QuestionCluster(BaseModel):
+    id: str
+    topic_slug: str
+    canonical_text: str
+    question_ids: list[str] = Field(default_factory=list)
+    member_texts: list[str] = Field(default_factory=list)
+    centroid: list[float] | None = None
+    has_curated: bool = False
+    last_asked_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class SystemConfig(BaseModel):
     key: str
     value: str

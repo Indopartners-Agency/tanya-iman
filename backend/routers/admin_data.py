@@ -7,7 +7,8 @@ editing with validation, content gaps, and system configuration.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -15,10 +16,19 @@ from pydantic import BaseModel, Field
 
 from config.loader import topics as get_canonical_topics
 from engine.validators import ComplianceValidator
-from models import AdminUser, Citation, SystemConfig
+from models import AdminAuditLog, AdminUser, Citation, SystemConfig
 from models.enums import AdminRole, ValidatorCode
 from routers.admin_auth import require_admin
 from routers.deps import StorageDep
+from services.clustering import (
+    merge_clusters as service_merge_clusters,
+)
+from services.clustering import (
+    promote_cluster_to_curated as service_promote_cluster,
+)
+from services.clustering import (
+    rename_cluster as service_rename_cluster,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +100,39 @@ class UpdateCuratedAnswerRequest(BaseModel):
     answer_text: str
     status: str = "draft"  # "draft" | "published"
     citations: list[Citation] = Field(default_factory=list)
+
+
+class ClusterItem(BaseModel):
+    id: str
+    canonical: str
+    count: int
+    topic_slug: str
+    topic_label: str
+    last_asked: str
+    has_curated: bool
+    members: list[str] = Field(default_factory=list)
+
+
+class MergeClusterRequest(BaseModel):
+    source_cluster_id: str
+
+
+class RenameClusterRequest(BaseModel):
+    new_canonical: str
+
+
+class AuditLogItem(BaseModel):
+    id: str
+    actor: str
+    action: str
+    target: str
+    detail: str
+    at: str
+
+
+class RetentionPurgeResponse(BaseModel):
+    purged_count: int
+    cutoff: str
 
 
 # --- Helper ------------------------------------------------------------------
@@ -301,6 +344,18 @@ async def update_curated_answer(
     topic.updated_at = now
 
     await storage.save_topic(topic)
+
+    # Record audit log (F-37)
+    audit_entry = AdminAuditLog(
+        id=f"aud_{uuid.uuid4().hex[:12]}",
+        admin_id=admin.id,
+        action=f"topic_answer_{payload.status}",
+        target_id=slug,
+        detail=f"Updated curated answer for topic '{slug}' ({payload.status}) by {admin.email}",
+        created_at=now,
+    )
+    await storage.save_audit_log(audit_entry)
+
     labels = _topic_labels()
 
     return TopicItem(
@@ -477,3 +532,234 @@ async def update_system_configuration(
     cfg = SystemConfig(key=key, value=value, updated_by=admin.email, updated_at=now)
     await storage.set_system_config(cfg)
     return {"key": key, "value": value}
+
+
+# --- Clustering endpoints (BL-ADMIN-004) -------------------------------------
+
+
+@router.get("/clusters", response_model=list[ClusterItem])
+async def list_clusters(
+    storage: StorageDep,
+    admin: AdminDep,
+    topic: str | None = None,
+) -> list[ClusterItem]:
+    """Return all question clusters, optionally filtered by topic slug."""
+    clusters = await storage.list_clusters(topic_slug=topic)
+    labels = _topic_labels()
+    items: list[ClusterItem] = []
+    for c in clusters:
+        last_asked = ""
+        if c.updated_at:
+            last_asked = c.updated_at.isoformat()
+        elif c.created_at:
+            last_asked = c.created_at.isoformat()
+        items.append(
+            ClusterItem(
+                id=c.id,
+                canonical=c.canonical_text,
+                count=len(c.question_ids),
+                topic_slug=c.topic_slug,
+                topic_label=labels.get(c.topic_slug, c.topic_slug),
+                last_asked=last_asked,
+                has_curated=c.has_curated,
+                members=c.member_texts or [],
+            )
+        )
+    return items
+
+
+@router.put("/clusters/{cluster_id}/rename", response_model=ClusterItem)
+async def rename_cluster_endpoint(
+    cluster_id: str,
+    payload: RenameClusterRequest,
+    storage: StorageDep,
+    admin: EditorDep,
+) -> ClusterItem:
+    """Rename the canonical text of a cluster."""
+    cluster = await storage.get_cluster(cluster_id)
+    if not cluster:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Cluster not found")
+
+    updated = await service_rename_cluster(storage, cluster_id, payload.new_canonical)
+    labels = _topic_labels()
+    last_asked = updated.updated_at.isoformat() if updated.updated_at else ""
+
+    # Audit
+    now = datetime.now(UTC)
+    await storage.save_audit_log(
+        AdminAuditLog(
+            id=f"aud_{uuid.uuid4().hex[:12]}",
+            admin_id=admin.id,
+            action="cluster_rename",
+            target_id=cluster_id,
+            detail=f"Renamed cluster '{cluster_id}' to '{payload.new_canonical}' by {admin.email}",
+            created_at=now,
+        )
+    )
+
+    return ClusterItem(
+        id=updated.id,
+        canonical=updated.canonical_text,
+        count=len(updated.question_ids),
+        topic_slug=updated.topic_slug,
+        topic_label=labels.get(updated.topic_slug, updated.topic_slug),
+        last_asked=last_asked,
+        has_curated=updated.has_curated,
+        members=updated.member_texts or [],
+    )
+
+
+@router.post("/clusters/{cluster_id}/merge", response_model=ClusterItem)
+async def merge_cluster_endpoint(
+    cluster_id: str,
+    payload: MergeClusterRequest,
+    storage: StorageDep,
+    admin: EditorDep,
+) -> ClusterItem:
+    """Merge source cluster into target cluster (cluster_id is the target)."""
+    target = await storage.get_cluster(cluster_id)
+    if not target:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Target cluster not found")
+    source = await storage.get_cluster(payload.source_cluster_id)
+    if not source:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Source cluster not found")
+
+    merged = await service_merge_clusters(storage, cluster_id, payload.source_cluster_id)
+    labels = _topic_labels()
+    last_asked = merged.updated_at.isoformat() if merged.updated_at else ""
+
+    now = datetime.now(UTC)
+    await storage.save_audit_log(
+        AdminAuditLog(
+            id=f"aud_{uuid.uuid4().hex[:12]}",
+            admin_id=admin.id,
+            action="cluster_merge",
+            target_id=cluster_id,
+            detail=(
+                f"Merged cluster '{payload.source_cluster_id}' into '{cluster_id}' by {admin.email}"
+            ),
+            created_at=now,
+        )
+    )
+
+    return ClusterItem(
+        id=merged.id,
+        canonical=merged.canonical_text,
+        count=len(merged.question_ids),
+        topic_slug=merged.topic_slug,
+        topic_label=labels.get(merged.topic_slug, merged.topic_slug),
+        last_asked=last_asked,
+        has_curated=merged.has_curated,
+        members=merged.member_texts or [],
+    )
+
+
+@router.post("/clusters/{cluster_id}/promote")
+async def promote_cluster_endpoint(
+    cluster_id: str,
+    storage: StorageDep,
+    admin: EditorDep,
+) -> dict[str, str]:
+    """Promote cluster canonical text to topic's curated answer (draft)."""
+    cluster = await storage.get_cluster(cluster_id)
+    if not cluster:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Cluster not found")
+
+    topic = await service_promote_cluster(storage, cluster_id, admin.email)
+
+    now = datetime.now(UTC)
+    await storage.save_audit_log(
+        AdminAuditLog(
+            id=f"aud_{uuid.uuid4().hex[:12]}",
+            admin_id=admin.id,
+            action="cluster_promote",
+            target_id=cluster_id,
+            detail=(
+                f"Promoted cluster '{cluster_id}' to curated draft for topic "
+                f"'{cluster.topic_slug}' by {admin.email}"
+            ),
+            created_at=now,
+        )
+    )
+
+    return {"cluster_id": cluster_id, "topic_slug": topic.slug, "status": "draft"}
+
+
+@router.delete("/clusters/{cluster_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_cluster_endpoint(
+    cluster_id: str,
+    storage: StorageDep,
+    admin: SuperAdminDep,
+) -> None:
+    """Delete a cluster entirely (super_admin only)."""
+    cluster = await storage.get_cluster(cluster_id)
+    if not cluster:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Cluster not found")
+    await storage.delete_cluster(cluster_id)
+
+    now = datetime.now(UTC)
+    await storage.save_audit_log(
+        AdminAuditLog(
+            id=f"aud_{uuid.uuid4().hex[:12]}",
+            admin_id=admin.id,
+            action="cluster_delete",
+            target_id=cluster_id,
+            detail=f"Deleted cluster '{cluster_id}' by {admin.email}",
+            created_at=now,
+        )
+    )
+
+
+# --- Audit log & retention purge (BL-ADMIN-006) ------------------------------
+
+
+@router.get("/audit", response_model=list[AuditLogItem])
+async def list_audit_logs(
+    storage: StorageDep,
+    admin: SuperAdminDep,
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[AuditLogItem]:
+    """Return recent audit log entries (super_admin only)."""
+    entries = await storage.list_audit_logs(limit=limit)
+    return [
+        AuditLogItem(
+            id=e.id,
+            actor=e.admin_id,
+            action=e.action,
+            target=e.target_id,
+            detail=e.detail or "",
+            at=e.created_at.isoformat() if e.created_at else "",
+        )
+        for e in entries
+    ]
+
+
+@router.post("/purge", response_model=RetentionPurgeResponse)
+async def run_retention_purge(
+    storage: StorageDep,
+    admin: SuperAdminDep,
+) -> RetentionPurgeResponse:
+    """Purge questions older than the configured retention window (super_admin only)."""
+    # Read retention months from config (default: 12)
+    cfg = await storage.get_system_config("retention_months")
+    months = int(cfg.value) if cfg else 12
+    cutoff = datetime.now(UTC) - timedelta(days=months * 30)
+
+    purged = await storage.purge_questions_older_than(cutoff)
+
+    now = datetime.now(UTC)
+    await storage.save_audit_log(
+        AdminAuditLog(
+            id=f"aud_{uuid.uuid4().hex[:12]}",
+            admin_id=admin.id,
+            action="retention_purge",
+            target_id="questions",
+            detail=(
+                f"Purged {purged} questions older than {cutoff.date().isoformat()} "
+                f"(retention={months} months) by {admin.email}"
+            ),
+            created_at=now,
+        )
+    )
+
+    return RetentionPurgeResponse(purged_count=purged, cutoff=cutoff.isoformat())

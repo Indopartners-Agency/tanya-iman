@@ -11,11 +11,13 @@ from datetime import datetime
 from typing import Protocol
 
 from models import (
+    AdminAuditLog,
     AdminUser,
     Article,
     ArticleChunk,
     FlaggedChunk,
     Question,
+    QuestionCluster,
     Session,
     SystemConfig,
     Topic,
@@ -149,3 +151,20 @@ class Storage(Protocol):
     async def list_flagged_chunks(
         self, decision: ChunkDecision | None = None
     ) -> list[FlaggedChunk]: ...
+
+    # --- audit log (F-37) ----------------------------------------------------
+    async def save_audit_log(self, entry: AdminAuditLog) -> None: ...
+
+    async def list_audit_logs(self, limit: int = 50) -> list[AdminAuditLog]: ...
+
+    # --- clusters (F-22) -----------------------------------------------------
+    async def save_cluster(self, cluster: QuestionCluster) -> None: ...
+
+    async def get_cluster(self, cluster_id: str) -> QuestionCluster | None: ...
+
+    async def list_clusters(self, topic_slug: str | None = None) -> list[QuestionCluster]: ...
+
+    async def delete_cluster(self, cluster_id: str) -> None: ...
+
+    # --- retention purge (F-37) ----------------------------------------------
+    async def purge_questions_older_than(self, cutoff: datetime) -> int: ...

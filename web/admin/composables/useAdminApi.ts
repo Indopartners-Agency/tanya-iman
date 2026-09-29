@@ -302,6 +302,68 @@ export function useAdminApi() {
     })
   }
 
+  // --- Clusters ---
+  async function getClusters(topicSlug?: string) {
+    if (demo) return (fixtures as any).clusters || []
+
+    try {
+      const params = new URLSearchParams()
+      if (topicSlug) params.set('topic', topicSlug)
+      const data = await request<any[]>(`/api/admin/clusters?${params.toString()}`)
+      return data.map((c: any) => ({
+        id: c.id,
+        canonical: c.canonical,
+        count: c.count,
+        topicSlug: c.topic_slug,
+        topicLabel: c.topic_label,
+        lastAsked: c.last_asked,
+        hasCurated: c.has_curated,
+        members: c.members || [],
+      }))
+    } catch (e) {
+      console.warn('Failed to load clusters from API:', e)
+      return (fixtures as any).clusters || []
+    }
+  }
+
+  async function renameCluster(clusterId: string, newCanonical: string) {
+    return request<any>(`/api/admin/clusters/${clusterId}/rename`, {
+      method: 'PUT',
+      body: JSON.stringify({ new_canonical: newCanonical }),
+    })
+  }
+
+  async function mergeCluster(targetId: string, sourceId: string) {
+    return request<any>(`/api/admin/clusters/${targetId}/merge`, {
+      method: 'POST',
+      body: JSON.stringify({ source_cluster_id: sourceId }),
+    })
+  }
+
+  async function promoteCluster(clusterId: string) {
+    return request<any>(`/api/admin/clusters/${clusterId}/promote`, {
+      method: 'POST',
+    })
+  }
+
+  // --- Audit Log ---
+  async function getAuditLogs(limit = 100) {
+    try {
+      const data = await request<any[]>(`/api/admin/audit?limit=${limit}`)
+      return data.map((e: any) => ({
+        id: e.id,
+        actor: e.actor,
+        action: e.action,
+        target: e.target,
+        detail: e.detail,
+        at: e.at,
+      }))
+    } catch (e) {
+      console.warn('Failed to load audit logs from API:', e)
+      return []
+    }
+  }
+
   return {
     getDashboard,
     getTopics,
@@ -313,5 +375,10 @@ export function useAdminApi() {
     getReviews,
     getConfig,
     updateConfig,
+    getClusters,
+    renameCluster,
+    mergeCluster,
+    promoteCluster,
+    getAuditLogs,
   }
 }
