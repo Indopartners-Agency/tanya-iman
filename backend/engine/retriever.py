@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 from config.loader import approved_domains
 from ingestion.embedder import Embedder, get_embedder
@@ -74,11 +75,15 @@ class VectorRetriever:
         question: str,
         recent_turns: list[str] | None = None,
         override_threshold: float | None = None,
+        context: list[Any] | None = None,
     ) -> RetrievalResult:
         """Retrieve and rank top chunks for a question."""
         threshold = (
             override_threshold if override_threshold is not None else await self.get_threshold()
         )
+        if context and recent_turns is None:
+            recent_turns = [getattr(q, "question_text", str(q)) for q in context]
+
         query_text = self.build_query_text(question, recent_turns)
         query_vector = await self.embedder.embed_query(query_text)
 

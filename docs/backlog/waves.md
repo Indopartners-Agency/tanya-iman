@@ -126,24 +126,27 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 
 ---
 
-### Wave 6 — Production Answer Engine & RAG Integration 📋 *(planned)*
+### Wave 6 — Production Answer Engine & RAG Integration ✅ *(closed 2026-09-29)*
 
-**Status:** planned
+**Status:** completed
 
 **Impact:** [AI Answer Engine & Evaluation](backlog.md#ai-answer-engine--evaluation) — PIP Phase 5 & PRD F-9 – F-15, F-28, F-30 – F-32.
 
-**Scope:**
-- Crisis guard asserting 100% recall before rate limiting (`engine/crisis.py`).
-- Relevance classifier & topic resolver with injection rejection (`engine/classifier.py`).
+**Shipped:**
+- Gemini LLM provider supporting structured JSON output and `thinkingBudget: 0` (`providers/llm.py`).
+- Crisis guard asserting 100% recall before rate limiting (`services/guards.py`).
+- Relevance classifier & topic resolver with prompt injection rejection and canonical topic fallback (`engine/classifier.py`).
 - Curated answer override routing before retrieval (`engine/curated.py`).
-- Answer composer with versioned prompt and structured JSON schema output (`engine/composer.py`).
-- Five compliance validators V1–V5 (word count, terminology, scripture balance, citation allowlist, grounding) with single repair loop (`engine/validators.py`).
-- Unified orchestration pipeline wiring all components and retiring the stub engine (`engine/pipeline.py`).
+- Answer composer with versioned prompt, URL hallucination defense, and fallback model on error/timeout (`engine/composer.py`).
+- Five compliance validators V1–V5 (word count bounds, terminology screening, scripture balance, citation allowlist & provenance, grounding overlap) with targeted repair loop (`engine/validators.py`).
+- Production RAG pipeline orchestrator wiring all stages and retiring the stub engine (`engine/rag.py`).
+- 120-question Indonesian evaluation benchmark and test runner (`tests/benchmark/questions.yml`, `tests/benchmark/test_benchmark.py`).
+- Complete automated test suite of 107 tests passing with 100% green status and 0 lint errors (`uv run pytest`, `uv run ruff check .`).
 
-| ID | Title | Depends on |
-|----|-------|------------|
-| **BL-ENG-001** | Relevance classifier, topic resolver, and curated answer override | **BL-CORP-004** |
-| **BL-ENG-002** | Answer composer with structured output and prompt stamping | **BL-ENG-001** |
-| **BL-ENG-003** | Compliance validators V1–V5 and repair loop | **BL-ENG-002** |
-| **BL-ENG-004** | Pipeline wiring, stub retirement, and benchmark harness | **BL-ENG-003** |
+| ID | Title | Status |
+|----|-------|--------|
+| ~~**BL-ENG-001**~~ | ~~Relevance classifier, topic resolver, and curated answer override~~ | completed |
+| ~~**BL-ENG-002**~~ | ~~Answer composer with structured output and prompt stamping~~ | completed |
+| ~~**BL-ENG-003**~~ | ~~Compliance validators V1–V5 and repair loop~~ | completed |
+| ~~**BL-ENG-004**~~ | ~~Pipeline wiring, stub retirement, and benchmark harness~~ | completed |
 

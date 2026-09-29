@@ -115,31 +115,35 @@ Admin access, JWT tokens, RBAC, password security.
 
 Classification, curated answers, generation, compliance validators, and evaluation benchmark.
 
-#### Planned
+#### Archive
 
 ##### BL-ENG-001 — Relevance classifier, topic resolver, and curated answer override
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
-- **Updated:** 2026-09-28
-- **Notes:** **Wave 6.** PIP Tasks 5.2, 5.3 & PRD F-9, F-10, F-23. Single structured LLM call classifying inquiry (`relevant`, `ambiguous`, `irrelevant`) and mapping to one of 14 canonical topics. Rejects prompt injection attempts with standard refusal. Intercepts published curated answers before vector retrieval to serve byte-identical canonical responses.
+- **Completed:** 2026-09-29
+- **Updated:** 2026-09-29
+- **Notes:** **Wave 6.** PIP Tasks 5.2, 5.3 & PRD F-9, F-10, F-23. Single structured LLM call classifying inquiry (`theology`, `emotional_only`, `ambiguous`, `irrelevant`) and mapping to one of 14 canonical topics. Rejects prompt injection attempts with standard refusal. Intercepts published curated answers before vector retrieval to serve byte-identical canonical responses.
 
 ##### BL-ENG-002 — Answer composer with structured output and prompt stamping
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
-- **Updated:** 2026-09-28
-- **Notes:** **Wave 6.** PIP Task 5.4 & PRD F-11–F-15. Composes theological answers using versioned Indonesian prompt template and structured output. Passages injected without raw URLs to prevent link hallucination. Records `prompt_version` and model metadata with 7s timeout fallback.
+- **Completed:** 2026-09-29
+- **Updated:** 2026-09-29
+- **Notes:** **Wave 6.** PIP Task 5.4 & PRD F-11–F-15. Composes theological answers using versioned Indonesian prompt template and structured output. Passages injected without raw URLs to prevent link hallucination. Records `prompt_version` and model metadata with timeout fallback.
 
 ##### BL-ENG-003 — Compliance validators V1–V5 and repair loop
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
-- **Updated:** 2026-09-28
-- **Notes:** **Wave 6.** PIP Task 5.5 & PRD F-28. Implements V1 word count (25–250 words), V2 forbidden terminology check, V3 scripture balance rule (max 1 Quran citation, leading with Bible, Bible ≥ Quran), V4 citation allowlist provenance, and V5 grounding evaluation. Runs exactly one automated repair attempt before §10.5 fallback.
+- **Completed:** 2026-09-29
+- **Updated:** 2026-09-29
+- **Notes:** **Wave 6.** PIP Task 5.5 & PRD F-28. Implements V1 word count bounds (25–250 words), V2 forbidden terminology check ('Tuhan'/'Yesus' prohibited, 'Allah'/'Isa Al-Masih' required), V3 scripture balance rule (max 1 Quran citation leading in first 25%, Bible ≥ 2 if Quran present), V4 citation allowlist and provenance, and V5 grounding content overlap. Runs exactly one automated repair attempt before fallback.
 
 ##### BL-ENG-004 — Pipeline wiring, stub retirement, and benchmark harness
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
-- **Updated:** 2026-09-28
-- **Notes:** **Wave 6.** PIP Tasks 5.6, 5.7 & PRD F-30–F-32. Connects crisis guard (running before rate limiter), classifier, curated override, vector retriever, composer, and validators into unified production pipeline. Retires stub chat engine. Executes 120-question automated benchmark suite (`questions.yml`).
+- **Completed:** 2026-09-29
+- **Updated:** 2026-09-29
+- **Notes:** **Wave 6.** PIP Tasks 5.6, 5.7 & PRD F-30–F-32. Connects crisis guard (running before rate limiter), classifier, curated override, vector retriever, composer, and validators into unified production RAG pipeline. Retires stub chat engine. Executes 120-question automated benchmark suite (`questions.yml`).
 
 ---
 
