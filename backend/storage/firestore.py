@@ -12,16 +12,31 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from google.cloud import firestore  # type: ignore[attr-defined]
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
+from google.cloud.firestore_v1.vector import Vector
 
-from models import AdminUser, Citation, Question, Session, SystemConfig, Topic, User
-from models.enums import AdminRole, AuthMethod, Platform
+from models import (
+    AdminUser,
+    Article,
+    ArticleChunk,
+    Citation,
+    FlaggedChunk,
+    Question,
+    Session,
+    SystemConfig,
+    Topic,
+    User,
+)
+from models.enums import AdminRole, ArticleStatus, AuthMethod, ChunkDecision, Platform
 
 USERS = "users"
 SESSIONS = "sessions"
 QUESTIONS = "questions"
 LIKES = "likes"
 RATE_WINDOWS = "rate_windows"
+ARTICLES = "articles"
 ARTICLE_CHUNKS = "article_chunks"
+FLAGGED_CHUNKS = "flagged_chunks"
 TOPICS = "topics"
 SYSTEM_CONFIG = "system_config"
 ADMIN_USERS = "admin_users"
@@ -220,9 +235,149 @@ class FirestoreStorage:
         result = await agg.get()
         return int(result[0][0].value)
 
-    # --- corpus --------------------------------------------------------------
+    # --- corpus & articles ---------------------------------------------------
+
+    async def get_article(self, article_id: str) -> Article | None:
+        snap = await self._db.collection(ARTICLES).document(article_id).get()
+        return Article(**snap.to_dict()) if snap.exists else None
+
+    async def get_article_by_url(self, url: str) -> Article | None:
+        query = (
+            self._db.collection(ARTICLES)
+            .where(filter=firestore.FieldFilter("url", "==", url))
+            .limit(1)
+        )
+        async for doc in query.stream():
+            return Article(**doc.to_dict())
+        return None
+
+    async def save_article(self, article: Article) -> None:
+        await self._db.collection(ARTICLES).document(article.id).set(article.model_dump())
+
+    async def list_articles(
+        self, site: str | None = None, status: ArticleStatus | None = None
+    ) -> list[Article]:
+        query = self._db.collection(ARTICLES)
+        if site is not None:
+            query = query.where(filter=firestore.FieldFilter("site", "==", site))
+        if status is not None:
+            query = query.where(filter=firestore.FieldFilter("status", "==", status.value))
+
+        articles: list[Article] = []
+        async for doc in query.stream():
+            articles.append(Article(**doc.to_dict()))
+        return articles
+
+    # --- article chunks & vector search --------------------------------------
+
+    async def get_chunk(self, chunk_id: str) -> ArticleChunk | None:
+        snap = await self._db.collection(ARTICLE_CHUNKS).document(chunk_id).get()
+        return ArticleChunk(**snap.to_dict()) if snap.exists else None
+
+    async def save_chunk(self, chunk: ArticleChunk) -> None:
+        await self._db.collection(ARTICLE_CHUNKS).document(chunk.id).set(chunk.model_dump())
+
+    async def save_chunks_batch(self, chunks: list[ArticleChunk]) -> None:
+        # Firestore batch maximum is 500 writes
+        for i in range(0, len(chunks), 400):
+            batch = self._db.batch()
+            for chunk in chunks[i : i + 400]:
+                doc_ref = self._db.collection(ARTICLE_CHUNKS).document(chunk.id)
+                batch.set(doc_ref, chunk.model_dump())
+            await batch.commit()
+
+    async def list_chunks_by_article(self, article_id: str) -> list[ArticleChunk]:
+        query = self._db.collection(ARTICLE_CHUNKS).where(
+            filter=firestore.FieldFilter("article_id", "==", article_id)
+        )
+        chunks: list[ArticleChunk] = []
+        async for doc in query.stream():
+            chunks.append(ArticleChunk(**doc.to_dict()))
+        return chunks
+
+    async def delete_chunks_by_article(self, article_id: str) -> None:
+        query = self._db.collection(ARTICLE_CHUNKS).where(
+            filter=firestore.FieldFilter("article_id", "==", article_id)
+        )
+        doc_ids: list[str] = []
+        async for doc in query.stream():
+            doc_ids.append(doc.id)
+
+        for i in range(0, len(doc_ids), 400):
+            batch = self._db.batch()
+            for doc_id in doc_ids[i : i + 400]:
+                batch.delete(self._db.collection(ARTICLE_CHUNKS).document(doc_id))
+            await batch.commit()
 
     async def count_article_chunks(self) -> int:
         agg = self._db.collection(ARTICLE_CHUNKS).count()
         result = await agg.get()
         return int(result[0][0].value)
+
+    async def find_nearest_chunks(
+        self,
+        query_vector: list[float],
+        limit: int = 8,
+        site_allowlist: frozenset[str] | None = None,
+        min_similarity: float = 0.0,
+    ) -> list[tuple[ArticleChunk, float]]:
+        coll = self._db.collection(ARTICLE_CHUNKS)
+        query = coll.where(filter=firestore.FieldFilter("is_retrievable", "==", True))
+        if site_allowlist:
+            query = query.where(filter=firestore.FieldFilter("site", "in", list(site_allowlist)))
+
+        try:
+            vector_query = query.find_nearest(
+                vector_field="embedding",
+                query_vector=Vector(query_vector),
+                distance_measure=DistanceMeasure.COSINE,
+                limit=limit,
+                distance_result_field="vector_distance",
+            )
+            results: list[tuple[ArticleChunk, float]] = []
+            async for doc in vector_query.stream():
+                data = doc.to_dict()
+                dist = data.pop("vector_distance", 1.0)
+                similarity = 1.0 - float(dist)
+                if similarity >= min_similarity:
+                    results.append((ArticleChunk(**data), similarity))
+            return results
+        except Exception:
+            # Fallback for emulator or non-indexed environments
+            import math
+
+            all_chunks: list[ArticleChunk] = []
+            async for doc in query.stream():
+                all_chunks.append(ArticleChunk(**doc.to_dict()))
+
+            results = []
+            for chunk in all_chunks:
+                if not chunk.embedding:
+                    continue
+                dot = sum(a * b for a, b in zip(query_vector, chunk.embedding, strict=False))
+                norm1 = math.sqrt(sum(a * a for a in query_vector))
+                norm2 = math.sqrt(sum(b * b for b in chunk.embedding))
+                if norm1 > 0 and norm2 > 0:
+                    sim = dot / (norm1 * norm2)
+                    if sim >= min_similarity:
+                        results.append((chunk, sim))
+
+            results.sort(key=lambda item: item[1], reverse=True)
+            return results[:limit]
+
+    # --- flagged chunks (OI-1) -----------------------------------------------
+
+    async def save_flagged_chunk(self, flagged: FlaggedChunk) -> None:
+        await self._db.collection(FLAGGED_CHUNKS).document(flagged.id).set(flagged.model_dump())
+
+    async def list_flagged_chunks(
+        self, decision: ChunkDecision | None = None
+    ) -> list[FlaggedChunk]:
+        query = self._db.collection(FLAGGED_CHUNKS)
+        if decision is not None:
+            query = query.where(filter=firestore.FieldFilter("decision", "==", decision.value))
+
+        flagged: list[FlaggedChunk] = []
+        async for doc in query.stream():
+            flagged.append(FlaggedChunk(**doc.to_dict()))
+        return flagged

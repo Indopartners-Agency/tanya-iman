@@ -17,21 +17,22 @@ Ad-hoc tasks and tactical work. Phased roadmap stays in [Project Implementation 
 | **Shipped** | **Wave 1** | completed | Foundation & Nuxt Shell: Pydantic schemas, storage layer parity, topics/config seeder, automated test suites (Phase 1) |
 | **Shipped** | **Wave 2** | completed | Dev Cloud Deployment: Cloud Run backend, Firebase hosting (seeker + admin), `deploy.sh` script, named Firestore (`tanya-iman`) |
 | **Shipped** | **Wave 3** | completed | Admin Authentication & Hardening: JWT login, refresh, bcrypt, dual-layer RBAC, initial super_admin bootstrap, portal session store — **BL-SEC-001**, **BL-SEC-002** |
+| **Shipped** | **Wave 5** | completed | Corpus Ingestion & RAG Pipeline: 5-site crawler, token-bounded chunker, Vertex AI multilingual embeddings, Firestore vector retriever — **BL-CORP-001**, **BL-CORP-002**, **BL-CORP-003**, **BL-CORP-004** |
 | **On Hold** | **Wave 4** | on_hold | Live Phone Auth (SMS & WhatsApp OTP) & Guest Conversion — **BL-AUTH-001**, **BL-AUTH-002**, **BL-AUTH-003**, **BL-AUTH-004** |
-| **Next / Planned** | **Wave 5** | planned | Corpus Ingestion & RAG Pipeline: 5-site crawler, token-bounded chunker, Vertex AI multilingual embeddings, Firestore vector retriever — **BL-CORP-001**, **BL-CORP-002**, **BL-CORP-003**, **BL-CORP-004** |
+| **Next / Planned** | **Wave 6** | planned | Production Answer Engine & RAG Integration: Classifier, curated override, composer, compliance validators (V1-V5), and pipeline integration — **BL-ENG-001**, **BL-ENG-002**, **BL-ENG-003**, **BL-ENG-004** |
 
 ---
 
 ## Current Wave Backlog
 
-### Open / Planned (Wave 5 — Corpus Ingestion & RAG Pipeline)
+### Open / Planned (Wave 6 — Production Answer Engine & RAG Integration)
 
 | Wave | ID | Status | Title |
 |------|-----|--------|-------|
-| **5** | [BL-CORP-001](#bl-corp-001--five-site-crawler-with-change-detection-and-allowlist) | planned | Five-site crawler with change detection and allowlist |
-| **5** | [BL-CORP-002](#bl-corp-002--article-chunker-with-token-bounds-and-forbidden-term-screening) | planned | Article chunker with token bounds and forbidden-term screening |
-| **5** | [BL-CORP-003](#bl-corp-003--multilingual-embeddings-and-firestore-vector-upsert) | planned | Multilingual embeddings and Firestore vector upsert |
-| **5** | [BL-CORP-004](#bl-corp-004--vector-retriever-with-query-time-site-allowlist) | planned | Vector retriever with query-time site allowlist |
+| **6** | [BL-ENG-001](#bl-eng-001--relevance-classifier-topic-resolver-and-curated-answer-override) | planned | Relevance classifier, topic resolver, and curated answer override |
+| **6** | [BL-ENG-002](#bl-eng-002--answer-composer-with-structured-output-and-prompt-stamping) | planned | Answer composer with structured output and prompt stamping |
+| **6** | [BL-ENG-003](#bl-eng-003--compliance-validators-v1-v5-and-repair-loop) | planned | Compliance validators V1–V5 and repair loop |
+| **6** | [BL-ENG-004](#bl-eng-004--pipeline-wiring-stub-retirement-and-benchmark-harness) | planned | Pipeline wiring, stub retirement, and benchmark harness |
 
 ### On Hold (Wave 4 — Phone & OTP Auth)
 *Deferred per user direction to prioritize core answer engine, corpus, and editorial workflows while keeping Guest access active.*
@@ -110,33 +111,69 @@ Admin access, JWT tokens, RBAC, password security.
 
 ---
 
+### AI Answer Engine & Evaluation
+
+Classification, curated answers, generation, compliance validators, and evaluation benchmark.
+
+#### Planned
+
+##### BL-ENG-001 — Relevance classifier, topic resolver, and curated answer override
+- **Status:** planned
+- **Created:** 2026-09-28
+- **Updated:** 2026-09-28
+- **Notes:** **Wave 6.** PIP Tasks 5.2, 5.3 & PRD F-9, F-10, F-23. Single structured LLM call classifying inquiry (`relevant`, `ambiguous`, `irrelevant`) and mapping to one of 14 canonical topics. Rejects prompt injection attempts with standard refusal. Intercepts published curated answers before vector retrieval to serve byte-identical canonical responses.
+
+##### BL-ENG-002 — Answer composer with structured output and prompt stamping
+- **Status:** planned
+- **Created:** 2026-09-28
+- **Updated:** 2026-09-28
+- **Notes:** **Wave 6.** PIP Task 5.4 & PRD F-11–F-15. Composes theological answers using versioned Indonesian prompt template and structured output. Passages injected without raw URLs to prevent link hallucination. Records `prompt_version` and model metadata with 7s timeout fallback.
+
+##### BL-ENG-003 — Compliance validators V1–V5 and repair loop
+- **Status:** planned
+- **Created:** 2026-09-28
+- **Updated:** 2026-09-28
+- **Notes:** **Wave 6.** PIP Task 5.5 & PRD F-28. Implements V1 word count (25–250 words), V2 forbidden terminology check, V3 scripture balance rule (max 1 Quran citation, leading with Bible, Bible ≥ Quran), V4 citation allowlist provenance, and V5 grounding evaluation. Runs exactly one automated repair attempt before §10.5 fallback.
+
+##### BL-ENG-004 — Pipeline wiring, stub retirement, and benchmark harness
+- **Status:** planned
+- **Created:** 2026-09-28
+- **Updated:** 2026-09-28
+- **Notes:** **Wave 6.** PIP Tasks 5.6, 5.7 & PRD F-30–F-32. Connects crisis guard (running before rate limiter), classifier, curated override, vector retriever, composer, and validators into unified production pipeline. Retires stub chat engine. Executes 120-question automated benchmark suite (`questions.yml`).
+
+---
+
 ### Corpus & Knowledge Base
 
 Crawler, chunker, embeddings, vector retriever.
 
-#### Planned
+#### Archive
 
 ##### BL-CORP-001 — Five-site crawler with change detection and allowlist
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
+- **Completed:** 2026-09-28
 - **Updated:** 2026-09-28
 - **Notes:** **Wave 5.** PIP Task 4.1 & PRD F-41. Crawls the 5 approved ministry sites (`isadanislam.org`, `isadanalquran.com`, `isadanalfatihah.com`, `isaislamdankaumwanita.com`, `takutneraka.com`). Sitemap-first traversal, polite delay, main-content extraction, and SHA-256 `content_hash` change detection to eliminate redundant writes.
 
 ##### BL-CORP-002 — Article chunker with token bounds and forbidden-term screening
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
+- **Completed:** 2026-09-28
 - **Updated:** 2026-09-28
-- **Notes:** **Wave 5.** PIP Task 4.2 & AI Spec §8.2 (OI-1). Chunks extracted articles into 200–400 token windows with 50-token overlap, never spanning article boundaries. Flags chunks containing forbidden terms ("Yesus", "Tuhan") into a review collection before indexing.
+- **Notes:** **Wave 5.** PIP Task 4.2 & AI Spec §8.2 (OI-1). Chunks extracted articles into ~400 token windows with 80-token overlap, never spanning article boundaries. Flags chunks containing forbidden terms ("Yesus", "Tuhan") into a review collection before indexing.
 
 ##### BL-CORP-003 — Multilingual embeddings and Firestore vector upsert
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
+- **Completed:** 2026-09-28
 - **Updated:** 2026-09-28
-- **Notes:** **Wave 5.** PIP Task 4.3. Batched embeddings using Vertex AI `text-multilingual-embedding-002`. Stamps `embedding_model` on stored chunks to enable graceful re-indexing. Upserts into Firestore `article_chunks` and retires obsolete chunks.
+- **Notes:** **Wave 5.** PIP Task 4.3. Batched embeddings using Vertex AI `text-multilingual-embedding-002` (with DeterministicEmbedder for offline test parity). Stamps `embedding_model` on stored chunks to enable graceful re-indexing. Upserts into Firestore `article_chunks` and retires obsolete chunks.
 
 ##### BL-CORP-004 — Vector retriever with query-time site allowlist
-- **Status:** planned
+- **Status:** completed
 - **Created:** 2026-09-28
+- **Completed:** 2026-09-28
 - **Updated:** 2026-09-28
 - **Notes:** **Wave 5.** PIP Task 4.4. Firestore `find_nearest` over `article_chunks`. Filters strictly by the 5 approved domains at query time (defense-in-depth). Returns top 4 passages (max 2 per article), evaluates similarity threshold from `system_config`, and emits no-grounding signal if < 2 passages survive.
 

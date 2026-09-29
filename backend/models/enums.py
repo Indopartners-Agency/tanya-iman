@@ -68,3 +68,15 @@ class AdminRole(StrEnum):
     editor = "editor"
     reviewer = "reviewer"
     super_admin = "super_admin"
+
+
+class ArticleStatus(StrEnum):
+    active = "active"
+    retired = "retired"
+
+
+class ChunkDecision(StrEnum):
+    pending = "pending"
+    exclude = "exclude"
+    accept = "accept"
+    rewrite = "rewrite"
