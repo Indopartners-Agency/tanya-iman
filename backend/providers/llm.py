@@ -62,7 +62,7 @@ class GeminiLLM:
         self,
         api_key: str,
         model: str = "gemini-3.8-flash",
-        timeout: float = 7.0,
+        timeout: float = 15.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.api_key = api_key

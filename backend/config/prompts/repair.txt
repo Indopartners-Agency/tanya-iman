@@ -9,7 +9,15 @@ Jawaban Anda sebelumnya tidak memenuhi aturan berikut:
 Jawaban Anda sebelumnya:
 {previous_answer}
 
-Perbaiki jawaban tersebut agar memenuhi semua aturan, tanpa mengubah maknanya
-dan tanpa menambah informasi dari luar kutipan yang sudah diberikan.
+PETUNJUK PERBAIKAN:
+- Gunakan HANYA sebutan "Allah" dan "Isa Al-Masih". JANGAN PERNAH memakai kata "Tuhan" atau "Yesus".
+- Jika terdapat pelanggaran rujukan Al-Quran (misalnya tidak di awal teks atau kurang rujukan Alkitab), pindahkan rujukan Al-Quran ke kalimat pembuka (25% pertama teks) dan sertakan minimal 2 rujukan ayat Kitab Suci/Alkitab, ATAU cukup hapus rujukan Al-Quran tersebut.
+- Pastikan panjang jawaban antara 25 sampai 250 kata.
+- Jangan mengubah makna atau menambah informasi dari luar kutipan yang sudah diberikan.
 
-Kembalikan JSON dengan format yang sama seperti sebelumnya.
+Kembalikan HANYA format JSON persis seperti ini:
+{"answer": "teks jawaban yang diperbaiki",
+ "used_passages": [1, 2],
+ "quran_reference": null,
+ "bible_references": ["..."],
+ "confidence": "high"}

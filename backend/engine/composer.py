@@ -41,7 +41,7 @@ class AnswerComposer:
         self,
         primary_llm: LLMProvider | None = None,
         fallback_llm: LLMProvider | None = None,
-        timeout: float = 7.0,
+        timeout: float = 15.0,
     ) -> None:
         self.primary_llm = primary_llm
         self.fallback_llm = fallback_llm
@@ -120,6 +120,7 @@ class AnswerComposer:
         failures: list[ValidatorFailure],
         chunks: list[ArticleChunk],
         question: str,
+        previous_used_passages: list[int] | None = None,
     ) -> ComposerResult:
         """Run single repair attempt on answer draft (AI Spec 8.6, 9.3)."""
         settings = get_settings()
@@ -137,16 +138,30 @@ class AnswerComposer:
         )
 
         raw, model_name = await self._call_llm(repair_system, user_prompt)
-        return self._parse_result(raw, model_name, settings.prompt_version)
+        return self._parse_result(
+            raw, model_name, settings.prompt_version, default_used_passages=previous_used_passages
+        )
 
     def _parse_result(
-        self, raw: dict[str, Any], model_name: str, prompt_version: str
+        self,
+        raw: dict[str, Any],
+        model_name: str,
+        prompt_version: str,
+        default_used_passages: list[int] | None = None,
     ) -> ComposerResult:
-        answer = str(raw.get("answer", "")).strip()
-        used_raw = raw.get("used_passages", [])
+        answer = str(
+            raw.get("answer")
+            or raw.get("jawaban")
+            or raw.get("repaired_answer")
+            or raw.get("text")
+            or ""
+        ).strip()
+        used_raw = raw.get("used_passages") or raw.get("passages") or default_used_passages or [1]
         used_passages = [int(x) for x in used_raw if isinstance(x, (int, str)) and str(x).isdigit()]
-        quran_ref = raw.get("quran_reference")
-        bible_refs = raw.get("bible_references") or []
+        if not used_passages and default_used_passages:
+            used_passages = default_used_passages
+        quran_ref = raw.get("quran_reference") or raw.get("rujukan_quran")
+        bible_refs = raw.get("bible_references") or raw.get("rujukan_alkitab") or []
         if isinstance(bible_refs, str):
             bible_refs = [bible_refs]
 

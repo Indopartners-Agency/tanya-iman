@@ -133,7 +133,11 @@ class RAGEngine(AnswerEngine):
             )
             # Execute exactly one repair attempt (AI Spec 8.6)
             repaired_comp = await self.composer.repair(
-                comp_res.answer, val_res.failures, passages, request.question_text
+                comp_res.answer,
+                val_res.failures,
+                passages,
+                request.question_text,
+                previous_used_passages=comp_res.used_passages,
             )
             repaired_citations = self._assemble_citations(passages, repaired_comp.used_passages)
             repaired_val = self.validator.validate(

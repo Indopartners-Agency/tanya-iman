@@ -94,15 +94,21 @@ class DeterministicEmbedder:
         return self._embed_single(query)
 
 
+_CACHED_CREDS = None
+
+
 def _get_gcloud_token() -> str:
+    global _CACHED_CREDS
     try:
         import google.auth
         import google.auth.transport.requests
 
-        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-        req = google.auth.transport.requests.Request()
-        creds.refresh(req)
-        return str(creds.token)
+        if _CACHED_CREDS is None or not _CACHED_CREDS.valid:
+            creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+            req = google.auth.transport.requests.Request()
+            creds.refresh(req)
+            _CACHED_CREDS = creds
+        return str(_CACHED_CREDS.token)
     except Exception:
         import subprocess
 

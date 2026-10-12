@@ -28,22 +28,24 @@ _FORBIDDEN_TERMS_RE = re.compile(r"\b(Tuhan|TUHAN|Yesus|Jesus)\b")
 _REQUIRED_TERMS_RE = re.compile(r"\b(Allah|Isa\s+Al-Masih)\b", re.IGNORECASE)
 
 # V3: Scripture
-_QURAN_RE = re.compile(
-    r"\b(?:Qs\.|QS|Surah|Surat)\s+([A-Za-z0-9\-]+(?:\s+[0-9]+(?::[0-9]+)?)?)",
-    re.IGNORECASE,
-)
-
 _BIBLE_BOOKS = (
-    r"1\s+Samuel|2\s+Samuel|1\s+Raja-raja|2\s+Raja-raja|1\s+Tawarikh|2\s+Tawarikh|"
-    r"Kidung\s+Agung|Kisah\s+Para\s+Rasul|1\s+Korintus|2\s+Korintus|1\s+Tesalonika|"
-    r"2\s+Tesalonika|1\s+Timotius|2\s+Timotius|1\s+Petrus|2\s+Petrus|1\s+Yohanes|"
-    r"2\s+Yohanes|3\s+Yohanes|Kejadian|Keluaran|Imamat|Bilangan|Ulangan|Yosua|"
-    r"Hakim-hakim|Rut|Ezra|Nehemia|Ester|Ayub|Mazmur|Amsal|Pengkhotbah|Yesaya|"
-    r"Yeremia|Ratapan|Yehezkiel|Daniel|Hosea|Yoel|Amos|Obaja|Yunus|Mikha|Nahum|"
-    r"Habakuk|Zefanya|Hagai|Zakharia|Maleakhi|Matius|Markus|Lukas|Yohanes|Roma|"
-    r"Galatia|Efesus|Filipi|Kolose|Titus|Filemon|Ibrani|Yakobus|Yudas|Wahyu"
+    r"(?:1|I)\s+Samuel|(?:2|II)\s+Samuel|(?:1|I)\s+Raja-raja|(?:2|II)\s+Raja-raja|"
+    r"(?:1|I)\s+Tawarikh|(?:2|II)\s+Tawarikh|Kidung\s+Agung|Kisah\s+Para\s+Rasul|"
+    r"(?:1|I)\s+Korintus|(?:2|II)\s+Korintus|(?:1|I)\s+Tesalonika|(?:2|II)\s+Tesalonika|"
+    r"(?:1|I)\s+Timotius|(?:2|II)\s+Timotius|(?:1|I)\s+Petrus|(?:2|II)\s+Petrus|"
+    r"(?:1|I)\s+Yohanes|(?:2|II)\s+Yohanes|(?:3|III)\s+Yohanes|Kejadian|Keluaran|Imamat|"
+    r"Bilangan|Ulangan|Yosua|Hakim-hakim|Rut|Ezra|Nehemia|Ester|Ayub|Mazmur|Amsal|"
+    r"Pengkhotbah|Yesaya|Yeremia|Ratapan|Yehezkiel|Daniel|Hosea|Yoel|Amos|Obaja|Yunus|"
+    r"Mikha|Nahum|Habakuk|Zefanya|Hagai|Zakharia|Maleakhi|Matius|Markus|Lukas|Yohanes|"
+    r"Roma|Galatia|Efesus|Filipi|Kolose|Titus|Filemon|Ibrani|Yakobus|Yudas|Wahyu"
 )
 _BIBLE_RE = re.compile(rf"\b(?:{_BIBLE_BOOKS})\s+\d+(?::\d+(?:-\d+)?)?", re.IGNORECASE)
+
+_NOT_QURAN_PREFIX = _BIBLE_BOOKS + r"|Paulus|Rasul\s+Paulus|Kiriman"
+_QURAN_RE = re.compile(
+    rf"\b(?:Qs\.|QS|Surah|Surat)\s+(?!(?:{_NOT_QURAN_PREFIX})\b)([A-Za-z0-9\-]+(?:\s+[0-9]+(?::[0-9]+)?)?)",
+    re.IGNORECASE,
+)
 
 _INDONESIAN_STOPWORDS = frozenset(
     {

@@ -25,6 +25,7 @@ dist/
 
 # Tooling artifacts
 graphify-out/
+Websites-rss-feed/
 
 # Firebase
 .firebase/
