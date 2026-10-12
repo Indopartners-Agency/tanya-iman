@@ -94,8 +94,23 @@ class DeterministicEmbedder:
         return self._embed_single(query)
 
 
+def _get_gcloud_token() -> str:
+    try:
+        import google.auth
+        import google.auth.transport.requests
+
+        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        req = google.auth.transport.requests.Request()
+        creds.refresh(req)
+        return str(creds.token)
+    except Exception:
+        import subprocess
+
+        return subprocess.check_output(["gcloud", "auth", "print-access-token"]).decode().strip()
+
+
 class VertexAIEmbedder:
-    """Google Cloud Vertex AI Multilingual Embedding provider."""
+    """Google Cloud Vertex AI Multilingual Embedding provider using REST API."""
 
     def __init__(
         self,
@@ -108,7 +123,6 @@ class VertexAIEmbedder:
         self.location = location
         self._model_name = model_name
         self._dimension = dimension
-        self._client = None
 
     @property
     def model_name(self) -> str:
@@ -118,29 +132,34 @@ class VertexAIEmbedder:
     def dimension(self) -> int:
         return self._dimension
 
-    def _get_model(self):
-        try:
-            import vertexai
-            from vertexai.language_models import TextEmbeddingModel
-
-            vertexai.init(project=self.project_id, location=self.location)
-            return TextEmbeddingModel.from_pretrained(self._model_name)
-        except Exception as err:
-            logger.warning("Could not initialize Vertex AI SDK: %s", err)
-            return None
-
     async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        model = self._get_model()
-        if model is None:
-            # Fallback to deterministic embedder if SDK unavailable
-            return await DeterministicEmbedder(self._model_name, self._dimension).embed_texts(texts)
+        if not texts:
+            return []
+        import httpx
+
+        token = _get_gcloud_token()
+        url = (
+            f"https://{self.location}-aiplatform.googleapis.com/v1/projects/{self.project_id}/"
+            f"locations/{self.location}/publishers/google/models/{self._model_name}:predict"
+        )
 
         embeddings: list[list[float]] = []
-        for i in range(0, len(texts), BATCH_SIZE):
-            batch = texts[i : i + BATCH_SIZE]
-            res = model.get_embeddings(batch)
-            for emb in res:
-                embeddings.append(emb.values)
+        async with httpx.AsyncClient() as client:
+            for i in range(0, len(texts), BATCH_SIZE):
+                batch = texts[i : i + BATCH_SIZE]
+                payload = {"instances": [{"content": t} for t in batch]}
+                res = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                    json=payload,
+                    timeout=30.0,
+                )
+                if res.status_code != 200:
+                    logger.error("Vertex AI embedding error %d: %s", res.status_code, res.text)
+                    raise RuntimeError(f"Vertex AI returned status {res.status_code}: {res.text}")
+                data = res.json()
+                for pred in data.get("predictions", []):
+                    embeddings.append(pred["embeddings"]["values"])
         return embeddings
 
     async def embed_query(self, query: str) -> list[float]:
@@ -151,11 +170,13 @@ class VertexAIEmbedder:
 def get_embedder() -> Embedder:
     """Factory returning configured embedder based on environment."""
     settings = get_settings()
-    if settings.gcloud_project and not settings.is_development:
+    if settings.gcloud_project and (
+        not settings.is_development or settings.storage_backend == "firestore"
+    ):
         try:
             return VertexAIEmbedder(project_id=settings.gcloud_project)
-        except Exception:
-            pass
+        except Exception as err:
+            logger.warning("Could not initialize VertexAIEmbedder: %s", err)
     return DeterministicEmbedder()
 
 
