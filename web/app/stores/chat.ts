@@ -34,6 +34,8 @@ export interface Message {
   retryAfterSeconds?: number
   /** The seeker text that produced a failed turn, so Coba lagi can resend it. */
   failedQuestion?: string
+  /** The turn failed because the request never left the device. */
+  offline?: boolean
 }
 
 export const useChatStore = defineStore('chat', () => {
@@ -48,28 +50,40 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push(message)
   }
 
+  /**
+   * Opening the conversation must not depend on the network: offline at
+   * launch, the greeting still renders and the session is opened by the first
+   * question instead (Chat UX section 12).
+   */
   async function start() {
-    const api = useApi()
-    const { platform, embedOrigin } = usePlatform()
-
-    const { session_id } = await api.createSession({
-      platform,
-      embed_origin: embedOrigin,
-    })
-    sessionId.value = session_id
     messages.value = []
-
+    sessionId.value = null
     push({
       id: 'greeting',
       role: 'iman',
       text: t('shared.greeting'),
     })
+
+    try {
+      await openSession()
+    } catch (err) {
+      if (!isNetworkFailure(err, navigator.onLine)) throw err
+    }
+  }
+
+  async function openSession(): Promise<string> {
+    const { platform, embedOrigin } = usePlatform()
+    const { session_id } = await useApi().createSession({
+      platform,
+      embed_origin: embedOrigin,
+    })
+    sessionId.value = session_id
+    return session_id
   }
 
   async function ask(text: string) {
     const trimmed = text.trim()
     if (!trimmed || sending.value) return
-    if (!sessionId.value) await start()
 
     error.value = null
     sending.value = true
@@ -79,9 +93,9 @@ export const useChatStore = defineStore('chat', () => {
     push({ id: placeholderId, role: 'iman', text: '', pending: true })
 
     try {
-      const api = useApi()
-      const response: AskResponse = await api.ask({
-        session_id: sessionId.value!,
+      const session = sessionId.value ?? (await openSession())
+      const response: AskResponse = await useApi().ask({
+        session_id: session,
         text: trimmed,
       })
       replacePending(placeholderId, {
@@ -135,6 +149,18 @@ export const useChatStore = defineStore('chat', () => {
       return
     }
 
+    if (isNetworkFailure(err, navigator.onLine)) {
+      replacePending(placeholderId, {
+        id: placeholderId,
+        role: 'iman',
+        text: t('ui.network_error'),
+        answerSource: 'error',
+        failedQuestion: question,
+        offline: true,
+      })
+      return
+    }
+
     // The failure is visible inside the conversation with its own retry, so a
     // separate error banner would say the same thing twice.
     replacePending(placeholderId, {
@@ -180,11 +206,18 @@ export const useChatStore = defineStore('chat', () => {
     await ask(question)
   }
 
+  /** Chat UX section 12: when the connection returns, resend the last turn that never left. */
+  async function retryOffline() {
+    if (sending.value) return
+    const failed = [...messages.value].reverse().find((m) => m.offline && m.failedQuestion)
+    if (failed) await retry(failed.id)
+  }
+
   function reset() {
     messages.value = []
     sessionId.value = null
     error.value = null
   }
 
-  return { messages, sessionId, sending, error, start, ask, toggleLike, retry, reset }
+  return { messages, sessionId, sending, error, start, ask, toggleLike, retry, retryOffline, reset }
 })

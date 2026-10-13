@@ -35,7 +35,12 @@ function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   unread.value = false
 }
 
+function onOnline() {
+  void chat.retryOffline()
+}
+
 onMounted(async () => {
+  window.addEventListener('online', onOnline)
   if (!auth.isAuthenticated && !demo) {
     await router.replace('/')
     return
@@ -43,6 +48,8 @@ onMounted(async () => {
   if (demo && !auth.isAuthenticated) await auth.signInAsGuest()
   await chat.start()
 })
+
+onUnmounted(() => window.removeEventListener('online', onOnline))
 
 watch(
   () => chat.messages.length,
