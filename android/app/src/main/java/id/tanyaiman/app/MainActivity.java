@@ -1,15 +1,22 @@
 package id.tanyaiman.app;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup.MarginLayoutParams;
+import android.webkit.WebView;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+
+    private ConnectivityManager connectivity;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -22,6 +29,16 @@ public class MainActivity extends BridgeActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             fitWebViewToInsets(bridge.getWebView());
         }
+
+        reportConnectivityToWebView(bridge.getWebView());
+    }
+
+    @Override
+    public void onDestroy() {
+        if (connectivity != null && networkCallback != null) {
+            connectivity.unregisterNetworkCallback(networkCallback);
+        }
+        super.onDestroy();
     }
 
     /**
@@ -47,5 +64,34 @@ public class MainActivity extends BridgeActivity {
 
             return WindowInsetsCompat.CONSUMED;
         });
+    }
+
+    /**
+     * Android's WebView does not watch the network itself: navigator.onLine
+     * stays true in airplane mode and the online event never fires unless the
+     * host app calls setNetworkAvailable. The chat resends a question that
+     * failed offline on that event (Chat UX section 12), so without this the
+     * seeker would have to tap Coba lagi by hand.
+     */
+    private void reportConnectivityToWebView(WebView webView) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return;
+
+        connectivity = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivity == null) return;
+
+        webView.setNetworkAvailable(connectivity.getActiveNetwork() != null);
+
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network network) {
+                runOnUiThread(() -> webView.setNetworkAvailable(true));
+            }
+
+            @Override
+            public void onLost(Network network) {
+                runOnUiThread(() -> webView.setNetworkAvailable(false));
+            }
+        };
+        connectivity.registerDefaultNetworkCallback(networkCallback);
     }
 }
