@@ -25,6 +25,39 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("ingestion.run")
 
 
+async def discover_urls_from_sitemap(
+    client: httpx.AsyncClient, sitemap_url: str, user_agent: str
+) -> list[str]:
+    """Recursively fetch sitemaps and return canonical post URLs, ignoring media/indices."""
+    try:
+        res = await client.get(
+            sitemap_url, headers={"User-Agent": user_agent}, follow_redirects=True
+        )
+        if res.status_code != 200:
+            logger.warning("HTTP %d fetching sitemap %s", res.status_code, sitemap_url)
+            return []
+    except Exception as err:
+        logger.warning("Error fetching sitemap %s: %s", sitemap_url, err)
+        return []
+
+    raw_urls = parse_sitemap_xml(res.text)
+    resolved_urls: list[str] = []
+
+    for u in raw_urls:
+        if u.endswith(".xml"):
+            if "post-sitemap" in u or "sitemap" in u:
+                sub_urls = await discover_urls_from_sitemap(client, u, user_agent)
+                resolved_urls.extend(sub_urls)
+        else:
+            if not any(
+                u.lower().endswith(ext)
+                for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf", ".svg")
+            ):
+                resolved_urls.append(u)
+
+    return list(dict.fromkeys(resolved_urls))
+
+
 async def run_ingestion(
     site_filter: str | None = None,
     dry_run: bool = False,
@@ -49,7 +82,7 @@ async def run_ingestion(
     total_chunks_written = 0
     total_flags_raised = 0
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         crawler = Crawler(storage=storage, client=client)
 
         for site_info in sites:
@@ -62,17 +95,12 @@ async def run_ingestion(
             page_urls: list[str] = []
 
             if sitemap_url:
-                try:
-                    res = await client.get(sitemap_url, headers={"User-Agent": crawler.user_agent})
-                    if res.status_code == 200:
-                        page_urls = parse_sitemap_xml(res.text)
-                        logger.info(
-                            "Discovered %d URLs from sitemap for %s", len(page_urls), domain
-                        )
-                    else:
-                        logger.warning("HTTP %d fetching sitemap %s", res.status_code, sitemap_url)
-                except Exception as err:
-                    logger.warning("Error fetching sitemap for %s: %s", domain, err)
+                page_urls = await discover_urls_from_sitemap(
+                    client, sitemap_url, crawler.user_agent
+                )
+                logger.info(
+                    "Discovered %d post URLs from sitemap for %s", len(page_urls), domain
+                )
 
             for url in page_urls:
                 total_articles_seen += 1

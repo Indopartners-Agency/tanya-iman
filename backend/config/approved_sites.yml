@@ -14,9 +14,9 @@ sites:
   - domain: isadanalfatihah.com
     sitemap: https://isadanalfatihah.com/sitemap.xml
   - domain: isaislamdankaumwanita.com
-    sitemap: https://isaislamdankaumwanita.com/sitemap.xml
+    sitemap: https://isaislamdankaumwanita.com/post-sitemap.xml
   - domain: takutneraka.com
-    sitemap: https://takutneraka.com/sitemap.xml
+    sitemap: https://takutneraka.com/post-sitemap.xml
 
 crawl:
   politeness_delay_seconds: 2

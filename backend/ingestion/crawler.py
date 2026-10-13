@@ -100,12 +100,14 @@ class HTMLContentExtractor(HTMLParser):
             return
 
         # Check for boilerplate class or id attributes
-        attrs_dict = dict(attrs)
-        class_val = attrs_dict.get("class") or ""
-        id_val = attrs_dict.get("id") or ""
-        if BOILERPLATE_PATTERN.search(class_val) or BOILERPLATE_PATTERN.search(id_val):
-            self._ignored_stack.append(tag_lower)
-            return
+        if tag_lower not in ("html", "body"):
+            attrs_dict = dict(attrs)
+            class_val = attrs_dict.get("class") or ""
+            id_val = attrs_dict.get("id") or ""
+            if "content-sidebar" not in class_val and "has-sidebar" not in class_val:
+                if BOILERPLATE_PATTERN.search(class_val) or BOILERPLATE_PATTERN.search(id_val):
+                    self._ignored_stack.append(tag_lower)
+                    return
 
         if tag_lower == "title":
             self._in_title = True
