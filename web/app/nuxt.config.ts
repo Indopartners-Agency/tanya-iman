@@ -44,7 +44,9 @@ export default defineNuxtConfig({
       title: 'Tanya Iman',
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        // viewport-fit=cover is what makes env(safe-area-inset-*) non-zero on
+        // notched and gesture-bar Android devices (Chat UX section 12).
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
         {
           name: 'description',
           content:

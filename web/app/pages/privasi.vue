@@ -9,7 +9,7 @@ const { t } = useCopy()
 </script>
 
 <template>
-  <main class="min-h-dvh bg-base px-6 py-8">
+  <main class="min-h-dvh bg-base px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
     <div class="mx-auto max-w-measure">
       <NuxtLink
         to="/"

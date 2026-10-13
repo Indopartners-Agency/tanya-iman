@@ -42,7 +42,7 @@ async function signOut() {
   >
     <header
       v-if="!embed"
-      class="flex items-center justify-between border-b border-subtle bg-surface px-4 py-3"
+      class="flex items-center justify-between border-b border-subtle bg-surface px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]"
     >
       <h1 class="font-serif text-[17px] text-primary">{{ t('ui.app_name') }}</h1>
 
