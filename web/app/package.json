@@ -10,7 +10,9 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "vitest run",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "android:check": "node scripts/api-base.mjs",
+    "android:sync": "node scripts/api-base.mjs && nuxt generate && cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^7.6.9",
