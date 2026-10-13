@@ -32,10 +32,13 @@ onMounted(() => {
   isTouch.value = window.matchMedia('(pointer: coarse)').matches
 })
 
-function submit() {
+async function submit() {
   if (!canSend.value) return
   emit('submit', text.value)
   text.value = ''
+  // v-model writes the empty value to the DOM on the next tick; measuring
+  // before then sizes the textarea to the text that was just sent.
+  await nextTick()
   resize()
 }
 
