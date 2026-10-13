@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Citation } from '@tanya-iman/shared'
+import { Browser } from '@capacitor/browser'
 
 /**
  * Chat UX section 9. The article title is the link text and the domain sits
@@ -11,12 +12,18 @@ defineProps<{ citations: Citation[] }>()
 const { t } = useCopy()
 
 /**
- * Links open in a new tab on web and in the external browser on Android.
- * Inside the widget they must escape the iframe — a citation that opens in a
- * 620px-tall frame strands the reader (Chat UX section 11).
+ * Links open in a new tab on web, escape the iframe in the widget, and go to
+ * the system browser on Android (utils/linkTarget.ts).
  */
 const { platform } = usePlatform()
-const target = platform === 'widget' ? '_top' : '_blank'
+const mode = citationLinkMode(platform)
+const target = mode === 'top' ? '_top' : '_blank'
+
+function open(event: MouseEvent, url: string) {
+  if (mode !== 'system') return
+  event.preventDefault()
+  void Browser.open({ url })
+}
 </script>
 
 <template>
@@ -31,6 +38,7 @@ const target = platform === 'widget' ? '_top' : '_blank'
             :target="target"
             rel="noopener noreferrer"
             class="block text-[14px] leading-snug text-accent underline decoration-subtle underline-offset-2 hover:decoration-accent"
+            @click="open($event, citation.url)"
           >
             {{ citation.title }}
           </a>

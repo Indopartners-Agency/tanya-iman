@@ -371,6 +371,9 @@ deploy_backend() {
   else
     local _cors_parts=()
     [[ -n "$APP_SITE_ID" ]]   && _cors_parts+=("https://${APP_SITE_ID}.web.app")
+    # The Android app is the same bundle served by Capacitor from
+    # https://localhost (androidScheme https), so its requests carry that origin.
+    [[ -n "$APP_SITE_ID" ]]   && _cors_parts+=("https://localhost")
     [[ -n "$ADMIN_SITE_ID" ]] && _cors_parts+=("https://${ADMIN_SITE_ID}.web.app")
     cors_origins="$(IFS=,; echo "${_cors_parts[*]}")"
   fi

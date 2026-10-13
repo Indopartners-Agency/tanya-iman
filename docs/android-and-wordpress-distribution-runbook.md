@@ -89,14 +89,22 @@ Per PRD OD-5, one site first, then the rest after seven days of clean metrics.
 ## **B1. Build**
 
 ```bash
-cd web/app
+# Release (from the repo root). android:sync refuses a non-HTTPS or local API base.
 export NUXT_PUBLIC_API_BASE=https://api.tanyaiman.id
-npm ci && npm run generate
-
-npx cap sync android
-cd ../../android
+npm ci
+npm run android:sync --workspace web/app   # generate + cap sync into android/
+cd android
 ./gradlew bundleRelease          # → app/build/outputs/bundle/release/app-release.aab
 ```
+
+**Dev build for device testing.** Point the build at the dev Cloud Run backend and install a debug APK:
+
+    NUXT_PUBLIC_API_BASE="$(gcloud run services describe tanya-iman-backend --region asia-southeast2 --project tanya-iman-dev --format='value(status.url)')" \
+      npm run android:sync --workspace web/app
+    cd android && ./gradlew assembleDebug
+    adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+The WebView's origin is `https://localhost`; the backend must list it in `CORS_ORIGINS` (`deploy.sh` adds it).
 
 Signing key lives in the team password manager, never in the repository. Losing it means never being able to update the app under the same listing, so it is backed up in two places and the Play App Signing enrolment is completed at first upload.
 

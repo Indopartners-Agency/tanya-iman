@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * embed.spec.ts — Phase 7 Task 7.1
  *
@@ -26,9 +27,11 @@ function makeScriptTag(src: string, attrs: Record<string, string> = {}): HTMLScr
  * Load embed.js in the current JSDOM window by evaluating it as a string.
  * We read the file content and eval it so we can control document.currentScript.
  */
-async function loadEmbed(scriptAttrs: Record<string, string> = {}) {
-  // Reset the guard so each test gets a fresh load
-  delete (window as any).__tanyaImanEmbedLoaded
+async function loadEmbed(scriptAttrs: Record<string, string> = {}, resetGuard = true) {
+  // Reset the guard so each test gets a fresh load unless testing multiple runs
+  if (resetGuard) {
+    delete (window as any).__tanyaImanEmbedLoaded
+  }
 
   const fs = await import('fs')
   const path = await import('path')
@@ -70,7 +73,7 @@ describe('embed.js — Idempotency', () => {
   it('loads only once even when the script runs twice', async () => {
     await loadEmbed()
     const countBefore = document.querySelectorAll('button[aria-label]').length
-    await loadEmbed() // second load — should be no-op
+    await loadEmbed({}, false) // second load — should be no-op
     const countAfter = document.querySelectorAll('button[aria-label]').length
     expect(countAfter).toBe(countBefore)
   })
@@ -198,11 +201,24 @@ describe('embed.js — postMessage height resize', () => {
   it('resizes iframe height on valid tanya-iman:height message', async () => {
     await loadEmbed()
     const frame = document.querySelector('iframe') as HTMLIFrameElement
+    const fakeWin = new (window.constructor as any)()
+    Object.defineProperty(frame, 'contentWindow', { get: () => fakeWin, configurable: true })
+
+    let assignedHeight = ''
+    Object.defineProperty(frame.style, 'height', {
+      set(val: string) {
+        assignedHeight = val
+      },
+      get() {
+        return assignedHeight
+      },
+      configurable: true,
+    })
 
     window.dispatchEvent(
       new MessageEvent('message', {
         data: { type: 'tanya-iman:height', height: 400 },
-        source: (frame as any).contentWindow ?? window,
+        source: fakeWin,
       }),
     )
 

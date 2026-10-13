@@ -28,7 +28,7 @@ async function continueAsGuest() {
 </script>
 
 <template>
-  <main class="flex min-h-dvh flex-col bg-base px-6">
+  <main class="flex min-h-dvh flex-col bg-base px-6 pt-[env(safe-area-inset-top)]">
     <div class="flex flex-1 flex-col justify-center">
       <div class="mx-auto w-full max-w-[400px]">
         <h1 class="text-center font-serif text-[30px] leading-tight text-primary">
@@ -66,7 +66,7 @@ async function continueAsGuest() {
     </div>
 
     <!-- F-4: footer link, 44px tap target even though the text is small. -->
-    <footer class="py-4 text-center">
+    <footer class="pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
       <NuxtLink
         to="/privasi"
         class="meta inline-flex min-h-[44px] items-center underline underline-offset-2"

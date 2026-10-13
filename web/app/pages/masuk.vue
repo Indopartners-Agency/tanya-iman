@@ -132,7 +132,7 @@ function back() {
 </script>
 
 <template>
-  <main class="flex min-h-dvh flex-col bg-base px-6">
+  <main class="flex min-h-dvh flex-col bg-base px-6 pt-[env(safe-area-inset-top)]">
     <header class="py-4">
       <button
         type="button"
@@ -269,7 +269,7 @@ function back() {
       </div>
     </div>
 
-    <footer class="py-4 text-center">
+    <footer class="pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
       <NuxtLink
         to="/privasi"
         class="meta inline-flex min-h-[44px] items-center underline underline-offset-2"

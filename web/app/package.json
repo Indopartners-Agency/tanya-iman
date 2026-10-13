@@ -10,9 +10,15 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "vitest run",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "android:check": "node scripts/api-base.mjs",
+    "android:sync": "node scripts/api-base.mjs && nuxt generate && cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.6.9",
     "@pinia/nuxt": "^0.5.5",
     "@tanya-iman/shared": "*",
     "nuxt": "^3.14.0",
@@ -20,8 +26,11 @@
     "vue": "^3.5.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
     "@types/node": "^22.10.0",
     "autoprefixer": "^10.4.20",
+    "happy-dom": "^21.0.1",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.0",
