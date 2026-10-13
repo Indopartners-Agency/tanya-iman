@@ -39,17 +39,38 @@ function onOnline() {
   void chat.retryOffline()
 }
 
+/**
+ * The keyboard shrinks the viewport from below. A seeker who was reading the
+ * latest answer should still see it, not the text above it (Chat UX
+ * section 12); one who had scrolled up keeps their place.
+ */
+function onResize() {
+  if (atBottom.value) scrollToBottom('auto')
+}
+
 onMounted(async () => {
   window.addEventListener('online', onOnline)
+  window.addEventListener('resize', onResize)
   if (!auth.isAuthenticated && !demo) {
     await router.replace('/')
     return
   }
   if (demo && !auth.isAuthenticated) await auth.signInAsGuest()
-  await chat.start()
+  // Coming back from the privacy page (F-4, linked from every screen) must
+  // not wipe the conversation; only an empty store starts a new one. Signing
+  // out resets the store, so the next seeker still starts fresh.
+  if (chat.messages.length === 0) {
+    await chat.start()
+  } else {
+    await nextTick()
+    scrollToBottom('auto')
+  }
 })
 
-onUnmounted(() => window.removeEventListener('online', onOnline))
+onUnmounted(() => {
+  window.removeEventListener('online', onOnline)
+  window.removeEventListener('resize', onResize)
+})
 
 watch(
   () => chat.messages.length,
