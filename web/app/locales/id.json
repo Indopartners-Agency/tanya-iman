@@ -55,6 +55,10 @@
     "demo_scenario": "Skenario",
     "crisis_demo_note": "Nomor bantuan pada contoh ini belum final dan menunggu persetujuan tim pastoral.",
     "privacy": "Kebijakan Privasi",
-    "logout": "Keluar"
+    "logout": "Keluar",
+    "exit_title": "Keluar dari Tanya Iman?",
+    "exit_body": "Percakapan yang sedang berlangsung akan ditutup.",
+    "exit_stay": "Tetap di sini",
+    "exit_leave": "Keluar"
   }
 }
