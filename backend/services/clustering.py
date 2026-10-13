@@ -11,7 +11,7 @@ import math
 import uuid
 from datetime import UTC, datetime
 
-from ingestion.embedder import DeterministicEmbedder, Embedder
+from ingestion.embedder import Embedder, get_embedder
 from models import Question, QuestionCluster, Topic
 from storage import Storage
 
@@ -36,7 +36,22 @@ async def assign_to_cluster(
     """Assigns an inquiry to an existing within-topic cluster, or seeds a new one."""
     topic_slug = question.topic_slug or "lainnya"
     if embedder is None:
-        embedder = DeterministicEmbedder()
+        if type(storage).__name__ == "FirestoreStorage":
+            try:
+                from config import get_settings
+                from ingestion.embedder import VertexAIEmbedder
+
+                settings = get_settings()
+                project = (
+                    settings.gcloud_project
+                    if settings.gcloud_project != "tanya-iman-local"
+                    else "project-philip-501910"
+                )
+                embedder = VertexAIEmbedder(project_id=project)
+            except Exception:
+                embedder = get_embedder()
+        else:
+            embedder = get_embedder()
 
     q_vec = await embedder.embed_query(question.question_text)
 
@@ -78,6 +93,9 @@ async def assign_to_cluster(
 
         best_cluster.updated_at = now
         await storage.save_cluster(best_cluster)
+        if question.cluster_id != best_cluster.id:
+            question.cluster_id = best_cluster.id
+            await storage.save_question(question)
         return best_cluster
 
     # Create new cluster seeded by this inquiry
@@ -95,6 +113,9 @@ async def assign_to_cluster(
         updated_at=now,
     )
     await storage.save_cluster(new_cluster)
+    if question.cluster_id != new_cluster.id:
+        question.cluster_id = new_cluster.id
+        await storage.save_question(question)
     return new_cluster
 
 
@@ -102,12 +123,18 @@ async def merge_clusters(
     storage: Storage, target_cluster_id: str, source_cluster_id: str
 ) -> QuestionCluster:
     """Merges source_cluster into target_cluster, preserving combined members."""
+    if target_cluster_id == source_cluster_id:
+        raise ValueError("Cannot merge a cluster into itself")
+
     target = await storage.get_cluster(target_cluster_id)
     if not target:
         raise ValueError(f"Target cluster '{target_cluster_id}' not found")
     source = await storage.get_cluster(source_cluster_id)
     if not source:
         raise ValueError(f"Source cluster '{source_cluster_id}' not found")
+
+    n_target_orig = len(target.question_ids)
+    n_source_orig = len(source.question_ids)
 
     # Combine member IDs and texts uniquely
     target.question_ids = list(dict.fromkeys(target.question_ids + source.question_ids))
@@ -121,7 +148,29 @@ async def merge_clusters(
     target.has_curated = target.has_curated or source.has_curated
     target.updated_at = datetime.now(UTC)
 
+    # Recompute blended centroid
+    if target.centroid and source.centroid:
+        combined = [
+            (t * n_target_orig + s * n_source_orig) / max(1, n_target_orig + n_source_orig)
+            for t, s in zip(target.centroid, source.centroid, strict=True)
+        ]
+        norm = math.sqrt(sum(x * x for x in combined))
+        if norm > 0:
+            target.centroid = [x / norm for x in combined]
+    elif source.centroid and not target.centroid:
+        target.centroid = source.centroid
+
     await storage.save_cluster(target)
+
+    # Update cluster_id and topic_slug on all source questions
+    for qid in source.question_ids:
+        q = await storage.get_question(qid)
+        if q:
+            q.cluster_id = target_cluster_id
+            if q.topic_slug != target.topic_slug:
+                q.topic_slug = target.topic_slug
+            await storage.save_question(q)
+
     await storage.delete_cluster(source_cluster_id)
     return target
 

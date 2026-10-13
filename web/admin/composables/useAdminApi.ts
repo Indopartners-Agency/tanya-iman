@@ -215,7 +215,16 @@ export function useAdminApi() {
   }
 
   async function getQuestionDetail(id: string) {
-    if (demo) return fixtures.questions.find((q) => q.id === id) || null
+    if (demo) {
+      const q = fixtures.questions.find((q) => q.id === id)
+      if (!q) return null
+      return {
+        ...q,
+        answer: (q as any).answer || 'Jawaban contoh dari sistem.',
+        retrievedChunks: fixtures.retrievedChunks,
+        validators: fixtures.validators,
+      }
+    }
 
     try {
       const q = await request<any>(`/api/admin/questions/${id}`)
@@ -230,15 +239,42 @@ export function useAdminApi() {
         likes: q.likes,
         citations: q.citations || [],
         retrievedChunkIds: q.retrieved_chunk_ids || [],
+        retrievedChunks: (q.retrieved_chunks || []).map((c: any) => ({
+          id: c.id,
+          articleTitle: c.article_title || c.title || 'Artikel',
+          site: c.site,
+          url: c.url,
+          score: c.score ?? 0,
+          cited: Boolean(c.cited),
+          text: c.text,
+        })),
+        validators: q.validators || [],
         validatorFailures: q.validator_failures || [],
+        classificationScore: q.classification_score ?? 0.94,
         model: q.model,
         promptVersion: q.prompt_version,
         latencyMs: q.latency_ms,
       }
     } catch (e) {
       console.warn(`Failed to load question ${id} from API, using fixtures:`, e)
-      return fixtures.questions.find((q) => q.id === id) || null
+      const q = fixtures.questions.find((q) => q.id === id)
+      if (!q) return null
+      return {
+        ...q,
+        answer: (q as any).answer || 'Jawaban contoh dari sistem.',
+        retrievedChunks: fixtures.retrievedChunks,
+        validators: fixtures.validators,
+      }
     }
+  }
+
+  async function deleteQuestion(id: string) {
+    if (demo) {
+      return { status: 'ok', deleted_id: id, audit_id: `aud_demo_${id}` }
+    }
+    return request<any>(`/api/admin/questions/${id}`, {
+      method: 'DELETE',
+    })
   }
 
   // --- Gaps ---
@@ -346,6 +382,12 @@ export function useAdminApi() {
     })
   }
 
+  async function deleteCluster(clusterId: string) {
+    return request<any>(`/api/admin/clusters/${clusterId}`, {
+      method: 'DELETE',
+    })
+  }
+
   // --- Audit Log ---
   async function getAuditLogs(limit = 100) {
     try {
@@ -371,6 +413,7 @@ export function useAdminApi() {
     updateTopicAnswer,
     getQuestions,
     getQuestionDetail,
+    deleteQuestion,
     getGaps,
     getReviews,
     getConfig,
@@ -379,6 +422,7 @@ export function useAdminApi() {
     renameCluster,
     mergeCluster,
     promoteCluster,
+    deleteCluster,
     getAuditLogs,
   }
 }

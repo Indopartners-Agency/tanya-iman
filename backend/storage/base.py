@@ -75,6 +75,8 @@ class Storage(Protocol):
         answer_source: str | None = None,
     ) -> int: ...
 
+    async def delete_question(self, question_id: str) -> None: ...
+
     # --- likes ---------------------------------------------------------------
     async def set_like(self, uid: str, question_id: str, liked: bool) -> int:
         """Idempotent by construction — the like key is ``{uid}_{question_id}``.

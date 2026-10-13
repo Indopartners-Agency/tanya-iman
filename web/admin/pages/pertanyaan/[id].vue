@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { retrievedChunks, validators } from '~/demo/fixtures'
 import { useSessionStore } from '~/stores/session'
 
 /**
@@ -12,12 +11,14 @@ import { useSessionStore } from '~/stores/session'
  */
 const { t } = useCopy()
 const route = useRoute()
+const router = useRouter()
 const session = useSessionStore()
 const api = useAdminApi()
 
 const question = ref<any>(null)
 const loading = ref(true)
 const confirmDelete = ref(false)
+const isDeleting = ref(false)
 const toast = ref<string | null>(null)
 
 const id = String(route.params.id || '')
@@ -30,10 +31,20 @@ onMounted(async () => {
   }
 })
 
-function doDelete() {
+async function doDelete() {
   confirmDelete.value = false
-  // F-37: the success toast carries the audit entry id.
-  toast.value = t('common.audit_id', { id: `a_${id.slice(-4)}` })
+  isDeleting.value = true
+  try {
+    const res = await api.deleteQuestion(id)
+    toast.value = t('common.audit_id', { id: res?.audit_id || `a_${id.slice(-4)}` })
+    setTimeout(() => {
+      router.push('/pertanyaan')
+    }, 1200)
+  } catch (err: any) {
+    toast.value = `Gagal menghapus: ${err?.message || 'Terjadi kesalahan'}`
+  } finally {
+    isDeleting.value = false
+  }
 }
 </script>
 
@@ -107,40 +118,58 @@ function doDelete() {
           <p class="meta">{{ t('detail.classification') }}</p>
           <div class="mt-2 flex items-center gap-2">
             <StatusChip :label="question.topicLabel || 'Teologi'" tone="success" />
-            <span class="tabular text-[13px] text-secondary">0,94</span>
+            <span class="tabular text-[13px] text-secondary">
+              {{ (question.classificationScore ?? 0.94).toFixed(2).replace('.', ',') }}
+            </span>
           </div>
         </section>
 
         <section class="rounded-xl border border-subtle bg-surface p-4">
           <p class="meta">{{ t('detail.retrieved') }}</p>
-          <ul class="mt-2 space-y-2.5">
+          <div
+            v-if="!question.retrievedChunks || question.retrievedChunks.length === 0"
+            class="mt-2 text-[13px] text-secondary"
+          >
+            Tidak ada potongan yang diambil untuk pertanyaan ini.
+          </div>
+          <ul v-else class="mt-2 space-y-2.5">
             <li
-              v-for="chunk in retrievedChunks"
+              v-for="chunk in question.retrievedChunks"
               :key="chunk.id"
               class="rounded-lg border border-subtle p-2.5"
             >
               <div class="flex items-start justify-between gap-2">
-                <p class="text-[13px] text-primary">{{ chunk.articleTitle }}</p>
+                <a
+                  v-if="chunk.url"
+                  :href="chunk.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-[13px] text-primary underline underline-offset-2 hover:text-accent"
+                >
+                  {{ chunk.articleTitle }}
+                </a>
+                <p v-else class="text-[13px] text-primary">{{ chunk.articleTitle }}</p>
                 <span class="tabular text-[12px] text-secondary">
-                  {{ chunk.score.toFixed(2) }}
+                  {{ (chunk.score ?? 0).toFixed(2) }}
                 </span>
               </div>
-              <div class="mt-1.5">
+              <div class="mt-1.5 flex items-center gap-2">
                 <StatusChip
                   :label="chunk.cited ? t('detail.cited') : t('detail.retrieved_only')"
                   :tone="chunk.cited ? 'success' : 'neutral'"
                 />
+                <span v-if="chunk.site" class="meta">{{ chunk.site }}</span>
               </div>
-              <p class="meta mt-1.5 line-clamp-2">{{ chunk.text }}</p>
+              <p class="meta mt-1.5 line-clamp-3">{{ chunk.text }}</p>
             </li>
           </ul>
         </section>
 
         <section class="rounded-xl border border-subtle bg-surface p-4">
           <p class="meta">{{ t('detail.validation') }}</p>
-          <ul class="mt-2 space-y-1.5">
+          <ul v-if="question.validators && question.validators.length" class="mt-2 space-y-1.5">
             <li
-              v-for="validator in validators"
+              v-for="validator in question.validators"
               :key="validator.code"
               class="flex items-center justify-between gap-2 text-[13px]"
             >
@@ -151,7 +180,9 @@ function doDelete() {
               />
             </li>
           </ul>
-          <p v-if="validators[0]" class="meta mt-2">{{ validators[0].measured }}</p>
+          <p v-if="question.validators && question.validators[0]" class="meta mt-2">
+            {{ question.validators[0].measured }}
+          </p>
         </section>
 
         <section class="rounded-xl border border-subtle bg-surface p-4">

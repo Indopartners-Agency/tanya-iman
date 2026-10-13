@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { audit } from '~/demo/fixtures'
-
 /**
  * Admin UX section 14. super_admin only.
  *
@@ -19,13 +17,21 @@ const config = ref<Record<string, string>>({
   contact_name: '',
   contact_number: '',
 })
+const auditLogs = ref<any[]>([])
+const auditLoading = ref(true)
 
 onMounted(async () => {
   try {
-    const data = await api.getConfig()
+    const [data, logs] = await Promise.all([
+      api.getConfig(),
+      api.getAuditLogs(),
+    ])
     if (data) config.value = { ...config.value, ...data }
+    auditLogs.value = logs || []
   } catch (e) {
-    console.warn('Failed to load system config:', e)
+    console.warn('Failed to load system config or audit logs:', e)
+  } finally {
+    auditLoading.value = false
   }
 })
 
@@ -37,6 +43,7 @@ const columns = [
 ]
 
 function timeLabel(iso: string): string {
+  if (!iso) return '-'
   return new Date(iso).toLocaleString('id-ID', {
     day: '2-digit',
     month: 'short',
@@ -136,10 +143,20 @@ function timeLabel(iso: string): string {
       <h2 class="mt-6 text-[15px] text-primary">{{ t('settings.audit') }}</h2>
       <div class="mt-2">
         <DataTable :columns="columns">
-          <tr v-for="entry in audit" :key="entry.id" class="border-t border-subtle">
+          <tr v-if="auditLoading" class="border-t border-subtle">
+            <td colspan="4" class="px-3 py-6 text-center text-[13px] text-secondary">
+              Memuat jejak audit...
+            </td>
+          </tr>
+          <tr v-else-if="auditLogs.length === 0" class="border-t border-subtle">
+            <td colspan="4" class="px-3 py-6 text-center text-[13px] text-secondary">
+              Belum ada jejak audit yang tercatat.
+            </td>
+          </tr>
+          <tr v-for="entry in auditLogs" :key="entry.id" class="border-t border-subtle">
             <td class="px-3 py-2.5 text-[13px] text-primary">{{ entry.actor }}</td>
             <td class="px-3 py-2.5 text-[13px] text-primary">{{ entry.action }}</td>
-            <td class="px-3 py-2.5 text-[13px] text-secondary">{{ entry.target }}</td>
+            <td class="px-3 py-2.5 text-[13px] text-secondary" :title="entry.detail">{{ entry.target }}</td>
             <td class="px-3 py-2.5 text-[12.5px] text-secondary">{{ timeLabel(entry.at) }}</td>
           </tr>
         </DataTable>

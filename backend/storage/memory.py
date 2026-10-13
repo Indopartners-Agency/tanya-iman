@@ -180,6 +180,9 @@ class MemoryStorage:
             ]
         return len(rows)
 
+    async def delete_question(self, question_id: str) -> None:
+        self._questions.pop(question_id, None)
+
     # --- likes ---------------------------------------------------------------
 
     async def set_like(self, uid: str, question_id: str, liked: bool) -> int:

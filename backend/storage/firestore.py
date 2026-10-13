@@ -196,6 +196,9 @@ class FirestoreStorage:
         result = await agg.get()
         return int(result[0][0].value)
 
+    async def delete_question(self, question_id: str) -> None:
+        await self._db.collection(QUESTIONS).document(question_id).delete()
+
     # --- likes ---------------------------------------------------------------
 
     async def set_like(self, uid: str, question_id: str, liked: bool) -> int:

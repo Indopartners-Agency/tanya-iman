@@ -120,7 +120,15 @@
     "col_last": "Terakhir ditanya",
     "col_curated": "Jawaban kurasi",
     "make_curated": "Jadikan jawaban kurasi",
-    "members": "Pertanyaan asli"
+    "members": "Pertanyaan asli",
+    "rename": "Ubah nama",
+    "rename_title": "Ubah Nama Kanonikal",
+    "rename_desc": "Ubah formulasi tema umum untuk kluster pertanyaan ini:",
+    "merge": "Gabung kluster",
+    "merge_title": "Gabungkan Kluster",
+    "merge_desc": "Pilih kluster sumber yang akan digabungkan ke dalam kluster target ini:",
+    "delete": "Hapus kluster",
+    "filter_all": "Semua Topik"
   },
 
   "gaps": {

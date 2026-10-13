@@ -7,17 +7,19 @@ anything here.
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from engine import EngineRequest, get_engine
 from models import AskRequest, AskResponse, Citation, LikeResponse, Question
 from models.enums import AnswerSource, ValidatorCode
 from routers.deps import CurrentUser, StorageDep
 from services import guards
+from services.clustering import assign_to_cluster
 from services.sessions import (
     SessionExpiredError,
     SessionNotFoundError,
@@ -28,11 +30,24 @@ from services.sessions import (
 from services.users import record_activity
 from storage import Storage
 
+logger = logging.getLogger("chat")
 router = APIRouter(tags=["chat"])
 
 
+async def _bg_assign_cluster(storage: Storage, question: Question) -> None:
+    try:
+        await assign_to_cluster(storage, question)
+    except Exception as exc:
+        logger.warning("Clustering background task failed for question %s: %s", question.id, exc)
+
+
 @router.post("/ask", response_model=AskResponse)
-async def ask(payload: AskRequest, user: CurrentUser, storage: StorageDep) -> AskResponse:
+async def ask(
+    payload: AskRequest,
+    user: CurrentUser,
+    storage: StorageDep,
+    background_tasks: BackgroundTasks,
+) -> AskResponse:
     started = time.perf_counter()
 
     try:
@@ -60,6 +75,7 @@ async def ask(payload: AskRequest, user: CurrentUser, storage: StorageDep) -> As
             answer_text=crisis.response_text,
             answer_source=AnswerSource.crisis,
             started=started,
+            background_tasks=background_tasks,
         )
 
     rate = await guards.check_rate_limit(storage, user.uid)
@@ -94,6 +110,7 @@ async def ask(payload: AskRequest, user: CurrentUser, storage: StorageDep) -> As
         validator_failures=result.validator_failures,
         model=result.model,
         prompt_version=result.prompt_version,
+        background_tasks=background_tasks,
     )
 
 
@@ -112,6 +129,7 @@ async def _persist_and_respond(
     validator_failures: list[ValidatorCode] | None = None,
     model: str | None = None,
     prompt_version: str | None = None,
+    background_tasks: BackgroundTasks | None = None,
 ) -> AskResponse:
     latency_ms = int((time.perf_counter() - started) * 1000)
     question = Question(
@@ -137,6 +155,13 @@ async def _persist_and_respond(
     await storage.save_question(question)
     await record_turn(storage, session_id)
     await record_activity(storage, uid)
+
+    if (
+        background_tasks is not None
+        and not question.is_crisis
+        and not question.is_refused
+    ):
+        background_tasks.add_task(_bg_assign_cluster, storage, question)
 
     return AskResponse(
         question_id=question.id,
