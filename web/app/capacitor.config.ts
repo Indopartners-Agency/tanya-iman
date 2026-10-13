@@ -15,10 +15,10 @@ const config: CapacitorConfig = {
   android: {
     path: '../../android',
     allowMixedContent: false,
-    // Android 15 forces edge-to-edge for targetSdk 35. Capacitor pads the
-    // WebView below the system bars so the input never sits under the gesture
-    // bar; the CSS env() padding covers devices where it does not.
-    adjustMarginsForEdgeToEdge: 'auto',
+    // Android 15 forces edge-to-edge for targetSdk 35. MainActivity.java owns
+    // the insets instead, because Capacitor's margins ignore the keyboard and
+    // would leave the composer underneath it.
+    adjustMarginsForEdgeToEdge: 'disable',
   },
 }
 
