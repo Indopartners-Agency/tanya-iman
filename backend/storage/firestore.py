@@ -299,6 +299,15 @@ class FirestoreStorage:
     async def save_admin_user(self, admin: AdminUser) -> None:
         await self._db.collection(ADMIN_USERS).document(admin.id).set(admin.model_dump())
 
+    async def list_admin_users(self) -> list[AdminUser]:
+        users: list[AdminUser] = []
+        async for doc in self._db.collection(ADMIN_USERS).stream():
+            users.append(AdminUser(**doc.to_dict()))
+        return sorted(users, key=lambda u: u.email.lower())
+
+    async def delete_admin_user(self, admin_id: str) -> None:
+        await self._db.collection(ADMIN_USERS).document(admin_id).delete()
+
     async def count_super_admins(self) -> int:
         query = self._db.collection(ADMIN_USERS).where(
             filter=firestore.FieldFilter("role", "==", AdminRole.super_admin.value)

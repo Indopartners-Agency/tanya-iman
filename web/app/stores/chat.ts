@@ -38,24 +38,80 @@ export interface Message {
   offline?: boolean
 }
 
+const SESSION_ID_KEY = 'ti_chat_session_id'
+const MESSAGES_KEY = 'ti_chat_messages'
+
+function loadPersistedMessages(): Message[] {
+  if (typeof sessionStorage === 'undefined') return []
+  try {
+    const raw = sessionStorage.getItem(MESSAGES_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((m) => !m?.pending) : []
+  } catch {
+    return []
+  }
+}
+
+function loadPersistedSessionId(): string | null {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    return sessionStorage.getItem(SESSION_ID_KEY)
+  } catch {
+    return null
+  }
+}
+
 export const useChatStore = defineStore('chat', () => {
-  const messages = ref<Message[]>([])
-  const sessionId = ref<string | null>(null)
+  const messages = ref<Message[]>(loadPersistedMessages())
+  const sessionId = ref<string | null>(loadPersistedSessionId())
   const sending = ref(false)
   const error = ref<string | null>(null)
 
   const { t } = useCopy()
 
+  function persistState() {
+    if (typeof sessionStorage === 'undefined') return
+    try {
+      if (sessionId.value) sessionStorage.setItem(SESSION_ID_KEY, sessionId.value)
+      else sessionStorage.removeItem(SESSION_ID_KEY)
+      const serializable = messages.value.filter((m) => !m.pending)
+      if (serializable.length > 0) {
+        sessionStorage.setItem(MESSAGES_KEY, JSON.stringify(serializable))
+      } else {
+        sessionStorage.removeItem(MESSAGES_KEY)
+      }
+    } catch {
+      // Ignore storage quota errors
+    }
+  }
+
   function push(message: Message) {
     messages.value.push(message)
+    persistState()
   }
 
   /**
    * Opening the conversation must not depend on the network: offline at
    * launch, the greeting still renders and the session is opened by the first
    * question instead (Chat UX section 12).
+   *
+   * F-5: If an active conversation already exists in memory or sessionStorage
+   * (e.g. returning from /privasi or /masuk guest upgrade, or reloading /chat),
+   * preserve it instead of wiping the transcript.
    */
-  async function start() {
+  async function start(forceReset = false) {
+    if (!forceReset && messages.value.length > 0) {
+      if (!sessionId.value) {
+        try {
+          await openSession()
+        } catch (err) {
+          if (!isNetworkFailure(err, navigator.onLine)) throw err
+        }
+      }
+      return
+    }
+
     messages.value = []
     sessionId.value = null
     push({
@@ -78,6 +134,7 @@ export const useChatStore = defineStore('chat', () => {
       embed_origin: embedOrigin,
     })
     sessionId.value = session_id
+    persistState()
     return session_id
   }
 
@@ -117,7 +174,10 @@ export const useChatStore = defineStore('chat', () => {
 
   function replacePending(placeholderId: string, message: Message) {
     const index = messages.value.findIndex((m) => m.id === placeholderId)
-    if (index >= 0) messages.value[index] = message
+    if (index >= 0) {
+      messages.value[index] = message
+      persistState()
+    }
   }
 
   function handleAskError(err: unknown, placeholderId: string, question: string) {
@@ -139,6 +199,7 @@ export const useChatStore = defineStore('chat', () => {
 
     if (err instanceof ApiError && err.isSessionGone) {
       sessionId.value = null
+      persistState()
       replacePending(placeholderId, {
         id: placeholderId,
         role: 'iman',
@@ -178,10 +239,12 @@ export const useChatStore = defineStore('chat', () => {
 
     const next = !message.liked
     message.liked = next // optimistic; a failed like is not worth an error state
+    persistState()
     try {
       await useApi().like(questionId, next)
     } catch {
       message.liked = !next
+      persistState()
     }
   }
 
@@ -202,6 +265,7 @@ export const useChatStore = defineStore('chat', () => {
     const removeFrom =
       index > 0 && messages.value[index - 1]?.role === 'seeker' ? index - 1 : index
     messages.value.splice(removeFrom)
+    persistState()
 
     await ask(question)
   }
@@ -217,6 +281,14 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     sessionId.value = null
     error.value = null
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.removeItem(SESSION_ID_KEY)
+        sessionStorage.removeItem(MESSAGES_KEY)
+      } catch {
+        // Ignore storage errors
+      }
+    }
   }
 
   return { messages, sessionId, sending, error, start, ask, toggleLike, retry, retryOffline, reset }

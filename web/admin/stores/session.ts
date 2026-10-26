@@ -24,11 +24,13 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  const isAuthenticated = computed(() => email.value !== null)
+  const isAuthenticated = computed(() => Boolean(email.value && accessToken.value))
 
-  /** Section 5.3: a reviewer sees no editing controls anywhere. */
-  const canEdit = computed(() => role.value === 'editor' || role.value === 'super_admin')
-  const canAdminister = computed(() => role.value === 'super_admin')
+  /** Section 5.3: a reviewer sees no editing controls anywhere. Unauthenticated users get neither. */
+  const canEdit = computed(
+    () => isAuthenticated.value && (role.value === 'editor' || role.value === 'super_admin'),
+  )
+  const canAdminister = computed(() => isAuthenticated.value && role.value === 'super_admin')
 
   function signIn(nextEmail: string, nextRole: AdminRole) {
     email.value = nextEmail

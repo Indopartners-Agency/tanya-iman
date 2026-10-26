@@ -1,26 +1,38 @@
 <script setup lang="ts">
 import { useSessionStore } from '~/stores/session'
-import { gapCount, reviewCount } from '~/demo/fixtures'
 
 /**
  * Sidebar on desktop, top menu on tablet (Admin UX section 16).
  *
- * Kekosongan Materi and Antrean Tinjauan carry standing badge counts because
- * both represent work waiting to be done — section 3.
+ * Kekosongan Materi and Antrean Tinjauan carry standing live badge counts
+ * because both represent work waiting to be done — section 3.
  */
 const { t } = useCopy()
 const session = useSessionStore()
 const route = useRoute()
 const router = useRouter()
 const demo = useDemoMode()
+const api = useAdminApi()
+
+onMounted(async () => {
+  if (!session.isAuthenticated) {
+    await router.replace('/masuk')
+    return
+  }
+  try {
+    await api.getDashboard()
+  } catch {
+    // Badge counts will update when individual pages load
+  }
+})
 
 const nav = computed(() => [
   { to: '/', label: t('nav.dashboard'), badge: 0 },
   { to: '/pertanyaan', label: t('nav.questions'), badge: 0 },
   { to: '/topik', label: t('nav.topics'), badge: 0 },
   { to: '/serupa', label: t('nav.clusters'), badge: 0 },
-  { to: '/kekosongan', label: t('nav.gaps'), badge: gapCount },
-  { to: '/tinjauan', label: t('nav.review'), badge: reviewCount },
+  { to: '/kekosongan', label: t('nav.gaps'), badge: api.liveGapCount.value },
+  { to: '/tinjauan', label: t('nav.review'), badge: api.liveReviewCount.value },
   ...(session.canAdminister
     ? [{ to: '/pengaturan', label: t('nav.settings'), badge: 0 }]
     : []),

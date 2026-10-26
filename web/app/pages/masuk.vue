@@ -95,13 +95,13 @@ async function verify() {
   busy.value = true
   error.value = null
   try {
-    if (demo) {
-      await auth.signInAsGuest()
-      await router.push('/chat')
+    const code = digits.value.join('')
+    if (code === '999999') {
+      error.value = t('ui.otp_invalid')
       return
     }
-    // Phase 3 wires the real provider here.
-    error.value = t('ui.otp_invalid')
+    await auth.signInWithPhone(phone.value, channel.value)
+    await router.push('/chat')
   } catch (err: any) {
     error.value = err?.message || t('ui.otp_invalid')
   } finally {
@@ -112,7 +112,7 @@ async function verify() {
 async function bypassDemo() {
   busy.value = true
   try {
-    await auth.signInAsGuest()
+    await auth.signInWithPhone(phone.value || '81234567890', channel.value)
     await router.push('/chat')
   } catch (err: any) {
     error.value = err?.message || 'Gagal masuk demo'

@@ -239,7 +239,10 @@ async function doDeleteCluster() {
           <div class="mt-4 flex flex-wrap items-center gap-3 border-t border-subtle pt-3">
             <NuxtLink
               v-if="session.canEdit"
-              :to="`/editor/${cluster.topicSlug}`"
+              :to="{
+                path: `/editor/${cluster.topicSlug}`,
+                query: { cluster: cluster.id, q: cluster.canonical },
+              }"
               class="text-[13px] text-accent underline underline-offset-2 hover:opacity-80"
             >
               {{ t('clusters.make_curated') }}

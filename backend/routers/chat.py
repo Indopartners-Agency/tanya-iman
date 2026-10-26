@@ -65,12 +65,14 @@ async def ask(
     # Crisis first, before the rate limiter. Someone who has burned through
     # their hourly quota and then types something alarming still gets the
     # helpline. See F-30 and the note in services/guards.py.
+    session_channel = getattr(session.platform, "value", str(session.platform or "web"))
     crisis = guards.check_crisis(text)
     if crisis.triggered:
         return await _persist_and_respond(
             storage,
             session_id=session.id,
             uid=user.uid,
+            channel=session_channel,
             question_text=text,
             answer_text=crisis.response_text,
             answer_source=AnswerSource.crisis,
@@ -100,14 +102,18 @@ async def ask(
         storage,
         session_id=session.id,
         uid=user.uid,
+        channel=session_channel,
         question_text=text,
         answer_text=result.answer_text,
         answer_source=result.answer_source,
         started=started,
         topic_slug=result.topic_slug,
+        relevance=result.relevance,
         citations=list(result.citations),
         retrieved_chunk_ids=result.retrieved_chunk_ids,
         validator_failures=result.validator_failures,
+        initial_validator_failures=result.initial_validator_failures,
+        repair_attempted=result.repair_attempted,
         model=result.model,
         prompt_version=result.prompt_version,
         background_tasks=background_tasks,
@@ -119,14 +125,18 @@ async def _persist_and_respond(
     *,
     session_id: str,
     uid: str,
+    channel: str = "web",
     question_text: str,
     answer_text: str,
     answer_source: AnswerSource,
     started: float,
     topic_slug: str | None = None,
+    relevance: str | None = None,
     citations: list[Citation] | None = None,
     retrieved_chunk_ids: list[str] | None = None,
     validator_failures: list[ValidatorCode] | None = None,
+    initial_validator_failures: list[ValidatorCode] | None = None,
+    repair_attempted: bool = False,
     model: str | None = None,
     prompt_version: str | None = None,
     background_tasks: BackgroundTasks | None = None,
@@ -136,13 +146,17 @@ async def _persist_and_respond(
         id=f"q_{uuid.uuid4().hex[:16]}",
         session_id=session_id,
         uid=uid,
+        channel=channel,
         question_text=question_text,
         answer_text=answer_text,
         answer_source=answer_source,
         topic_slug=topic_slug,
+        relevance=relevance,
         citations=citations or [],
         retrieved_chunk_ids=retrieved_chunk_ids or [],
         validator_failures=validator_failures or [],
+        initial_validator_failures=initial_validator_failures or [],
+        repair_attempted=repair_attempted,
         is_refused=answer_source is AnswerSource.refusal,
         is_crisis=answer_source is AnswerSource.crisis,
         has_grounding=bool(citations),
@@ -160,6 +174,13 @@ async def _persist_and_respond(
         background_tasks is not None
         and not question.is_crisis
         and not question.is_refused
+        and question.answer_source
+        not in (
+            AnswerSource.crisis,
+            AnswerSource.refusal,
+            AnswerSource.emotional_deferral,
+            AnswerSource.error,
+        )
     ):
         background_tasks.add_task(_bg_assign_cluster, storage, question)
 

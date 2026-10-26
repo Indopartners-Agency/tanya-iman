@@ -221,3 +221,76 @@ def test_get_engine_rag_factory(monkeypatch):
 
     reset_engine(None)
     config.settings.get_settings.cache_clear()
+
+
+async def test_rag_pipeline_double_validator_failure_returns_error_source():
+    storage = MemoryStorage()
+    embedder = DeterministicEmbedder()
+    chunker = ArticleChunker()
+    corpus_embedder = CorpusEmbedder(storage=storage, embedder=embedder)
+
+    art1 = _make_article("art1", "Kasih Allah", "https://isadanislam.org/kasih-allah")
+    art2 = _make_article("art2", "Pengampunan Dosa", "https://isadanislam.org/pengampunan-dosa")
+    text1 = (
+        "Kasih Allah melimpah bagi seluruh umat manusia melalui pengorbanan Isa Al-Masih.\n\n"
+        "Setiap orang yang mencari pengampunan sejati dapat menghampiri Allah."
+    )
+    text2 = (
+        "Kasih Allah dan pengampunan dosa menghapus segala beban jiwa.\n\n"
+        "Melalui Isa Al-Masih manusia diperdamaikan dengan Sang Pencipta."
+    )
+    res1 = chunker.chunk_article(art1, text1)
+    res2 = chunker.chunk_article(art2, text2)
+    await corpus_embedder.upsert_article_chunks(art1, res1.chunks)
+    await corpus_embedder.upsert_article_chunks(art2, res2.chunks)
+
+    llm = FakeLLM()
+    # 1st call: classifier -> theology
+    # 2nd call: initial composition -> too short & uses forbidden term "Yesus"
+    # 3rd call: repair composition -> still too short & uses "Tuhan"
+    responses = [
+        {"relevance": "theology", "topic_slug": "jalan-keselamatan"},
+        {
+            "answer": "Jawaban singkat tentang Yesus.",
+            "used_passages": [1],
+            "quran_reference": None,
+            "bible_references": [],
+            "confidence": "high",
+        },
+        {
+            "answer": "Jawaban perbaikan singkat tentang Tuhan.",
+            "used_passages": [1],
+            "quran_reference": None,
+            "bible_references": [],
+            "confidence": "high",
+        },
+    ]
+
+    async def _mock_complete(system, user, *args, **kwargs):
+        return responses.pop(0)
+
+    llm.complete_json = _mock_complete  # type: ignore
+
+    retriever = VectorRetriever(storage=storage, embedder=embedder, default_threshold=0.10)
+    classifier = RelevanceClassifier(llm=llm)
+    composer = AnswerComposer(primary_llm=llm)
+
+    engine = RAGEngine(
+        storage=storage,
+        retriever=retriever,
+        classifier=classifier,
+        composer=composer,
+    )
+
+    req = EngineRequest(
+        question_text="Bagaimana kasih Allah mengampuni dosa manusia?",
+        uid="u_fail",
+        session_id="s_fail",
+    )
+
+    result = await engine.answer(req)
+    assert result.answer_source == AnswerSource.error
+    assert result.citations == []
+    assert result.repair_attempted is True
+    assert len(result.initial_validator_failures) >= 1
+    assert len(result.validator_failures) >= 1

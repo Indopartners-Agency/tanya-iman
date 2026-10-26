@@ -84,8 +84,8 @@ async def test_admin_dashboard_and_topics(client: AsyncClient, storage: MemorySt
     assert detail_data["slug"] == "baptis"
     assert detail_data["label"] == "Baptisan"
 
-    # 4. Test Update Curated Answer
-    update_resp = await client.put(
+    # 4. Test Update Curated Answer (publishing with 0 citations fails V4; valid citation succeeds)
+    no_cit_resp = await client.put(
         "/api/admin/topics/baptis/answer",
         headers=headers,
         json={
@@ -98,10 +98,33 @@ async def test_admin_dashboard_and_topics(client: AsyncClient, storage: MemorySt
             "citations": [],
         },
     )
+    assert no_cit_resp.status_code == 422
+    assert "V4_CITATION_COUNT" in no_cit_resp.json()["detail"]
+
+    update_resp = await client.put(
+        "/api/admin/topics/baptis/answer",
+        headers=headers,
+        json={
+            "answer_text": (
+                "Baptisan adalah sakramen inisiasi yang kudus di mana orang percaya "
+                "mengaku imannya kepada Allah dan menerima anugerah hidup yang baru "
+                "menurut ajaran para rasul yang sejati dan damai."
+            ),
+            "status": "published",
+            "citations": [
+                {
+                    "title": "Baptisan dalam Injil",
+                    "url": "https://isadanislam.org/baptisan",
+                    "site": "isadanislam.org",
+                }
+            ],
+        },
+    )
     assert update_resp.status_code == 200
     updated_topic = update_resp.json()
     assert updated_topic["curated"] == "published"
     assert "Baptisan adalah" in updated_topic["curated_answer"]
+    assert len(updated_topic["curated_citations"]) == 1
 
 
 async def test_admin_questions_and_gaps(client: AsyncClient, storage: MemoryStorage):
@@ -180,8 +203,7 @@ async def test_admin_delete_question(client: AsyncClient, storage: MemoryStorage
     # Verify audit log recorded
     logs = await storage.list_audit_logs()
     assert any(
-        log.action == "delete_question" and log.target_id == "q_delete_target"
-        for log in logs
+        log.action == "delete_question" and log.target_id == "q_delete_target" for log in logs
     )
 
 
@@ -235,11 +257,41 @@ async def test_admin_question_detail_validator_failures(
     assert validators["V2"] is False  # v2_forbidden_term failed
     assert validators["V3"] is True
     assert validators["V4"] is True
+    assert data["repair"]["attempted"] is True
+    assert data["repair"]["succeeded"] is False
+
+    # Repaired question shows V1-V5 pass=True and repair.succeeded=True
+    q_repaired = Question(
+        id="q_repaired_ok",
+        session_id="sess_rep",
+        uid="uid_rep",
+        question_text="Siapakah Isa Al-Masih?",
+        answer_text=(
+            "Isa Al-Masih adalah Kalimat Allah dan Roh daripada-Nya yang membawa kasih karunia, "
+            "pengampunan dosa, serta keselamatan yang kekal bagi setiap orang yang percaya "
+            "kepada Allah dengan segenap hati."
+        ),
+        topic_slug="keselamatan",
+        answer_source=AnswerSource.generated,
+        validator_failures=[ValidatorCode.v1_too_short],
+        initial_validator_failures=[ValidatorCode.v1_too_short],
+        repair_attempted=True,
+        has_grounding=True,
+        created_at=datetime.now(UTC),
+    )
+    await storage.save_question(q_repaired)
+    rep_resp = await client.get("/api/admin/questions/q_repaired_ok", headers=headers)
+    assert rep_resp.status_code == 200
+    rep_data = rep_resp.json()
+    rep_validators = {v["code"]: v["pass"] for v in rep_data["validators"]}
+    assert all(rep_validators.values())
+    assert rep_data["repair"]["attempted"] is True
+    assert rep_data["repair"]["succeeded"] is True
+    assert rep_data["repair"]["initial_failures"] == ["V1_TOO_SHORT"]
+    assert rep_data["repair"]["final_failures"] == []
 
 
-async def test_admin_delete_question_cluster_cleanup(
-    client: AsyncClient, storage: MemoryStorage
-):
+async def test_admin_delete_question_cluster_cleanup(client: AsyncClient, storage: MemoryStorage):
     token = await _create_admin(storage, AdminRole.super_admin)
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -367,9 +419,7 @@ async def test_admin_cluster_merge_and_self_merge_guard(
     assert await storage.get_cluster("cl_source") is None
 
 
-async def test_admin_delete_cluster_unlinks_questions(
-    client: AsyncClient, storage: MemoryStorage
-):
+async def test_admin_delete_cluster_unlinks_questions(client: AsyncClient, storage: MemoryStorage):
     token = await _create_admin(storage, AdminRole.super_admin)
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -406,3 +456,241 @@ async def test_admin_delete_cluster_unlinks_questions(
     assert q_after is not None
     assert q_after.cluster_id is None
 
+
+async def test_admin_wave8_curated_validation_and_articles(
+    client: AsyncClient, storage: MemoryStorage
+):
+    from models.schemas import Article
+
+    token = await _create_admin(storage, AdminRole.editor)
+    headers = {"Authorization": f"Bearer {token}"}
+    now = datetime.now(UTC)
+
+    await storage.save_topic(Topic(slug="doa", name_id="Doa", name_en="Prayer"))
+    await storage.save_article(
+        Article(
+            id="art_doa_1",
+            site="isadanislam.org",
+            url="https://isadanislam.org/doa-dalam-injil",
+            title="Doa dalam Injil",
+            content_hash="h1",
+            first_seen_at=now,
+            last_crawled_at=now,
+        )
+    )
+
+    # 1. GET /api/admin/articles returns approved articles
+    art_resp = await client.get("/api/admin/articles?q=Doa", headers=headers)
+    assert art_resp.status_code == 200
+    articles = art_resp.json()
+    assert len(articles) == 1
+    assert articles[0]["site"] == "isadanislam.org"
+
+    # 2. Publishing curated answer with forbidden term "Yesus" or too short fails with 422
+    bad_resp = await client.put(
+        "/api/admin/topics/doa/answer",
+        headers=headers,
+        json={
+            "answer_text": "Jawaban singkat tentang Yesus.",
+            "status": "published",
+            "citations": [
+                {
+                    "title": "Doa dalam Injil",
+                    "url": "https://isadanislam.org/doa-dalam-injil",
+                    "site": "isadanislam.org",
+                }
+            ],
+        },
+    )
+    assert bad_resp.status_code == 422
+
+    # 3. Publishing valid 25-250 word answer with Allah/Isa Al-Masih and valid citation succeeds
+    valid_text = (
+        "Doa adalah sarana komunikasi yang tulus antara umat manusia dengan Allah yang Maha "
+        "Pengasih. Melalui ajaran Isa Al-Masih di dalam Kitab Suci, setiap orang diajak untuk "
+        "berdoa dengan kerendahan hati, memohon pengampunan, serta mencari petunjuk hidup yang "
+        "benar di hadapan Allah setiap hari."
+    )
+    ok_resp = await client.put(
+        "/api/admin/topics/doa/answer",
+        headers=headers,
+        json={
+            "answer_text": valid_text,
+            "status": "published",
+            "citations": [
+                {
+                    "title": "Doa dalam Injil",
+                    "url": "https://isadanislam.org/doa-dalam-injil",
+                    "site": "isadanislam.org",
+                }
+            ],
+        },
+    )
+    assert ok_resp.status_code == 200
+    assert ok_resp.json()["curated"] == "published"
+
+
+async def test_admin_wave8_gaps_reviews_export_and_settings(
+    client: AsyncClient, storage: MemoryStorage
+):
+    from models.enums import ChunkDecision, Platform, Relevance
+    from models.schemas import ArticleChunk, FlaggedChunk
+
+    token = await _create_admin(storage, AdminRole.super_admin)
+    headers = {"Authorization": f"Bearer {token}"}
+    now = datetime.now(UTC)
+
+    # 1. Seed ungrounded theology questions (duplicate text to verify aggregation) + refusal/crisis
+    await storage.save_question(
+        Question(
+            id="q_gap_a",
+            session_id="s1",
+            uid="u1",
+            question_text="Apa pandangan Kitab Suci tentang mimpi?",
+            topic_slug="lainnya",
+            answer_source=AnswerSource.no_grounding,
+            has_grounding=False,
+            channel=Platform.widget,
+            created_at=now,
+        )
+    )
+    await storage.save_question(
+        Question(
+            id="q_gap_b",
+            session_id="s2",
+            uid="u2",
+            question_text="Apa pandangan Kitab Suci tentang mimpi?",
+            topic_slug="lainnya",
+            answer_source=AnswerSource.no_grounding,
+            has_grounding=False,
+            channel=Platform.android,
+            created_at=now,
+        )
+    )
+    await storage.save_question(
+        Question(
+            id="q_refusal_not_gap",
+            session_id="s3",
+            uid="u3",
+            question_text="Siapa presiden sekarang?",
+            topic_slug="lainnya",
+            answer_source=AnswerSource.refusal,
+            has_grounding=False,
+            is_refused=True,
+            created_at=now,
+        )
+    )
+
+    gaps_resp = await client.get("/api/admin/gaps", headers=headers)
+    assert gaps_resp.status_code == 200
+    gaps = gaps_resp.json()
+    # Refusal excluded; duplicate ungrounded questions aggregated with count == 2
+    assert not any(g["id"] == "q_refusal_not_gap" for g in gaps)
+    dream_gap = next(g for g in gaps if "mimpi" in g["canonical"])
+    assert dream_gap["count"] == 2
+
+    # Resolve gap
+    res_gap = await client.post(f"/api/admin/gaps/{dream_gap['id']}/resolve", headers=headers)
+    assert res_gap.status_code == 200
+    gaps_after = (await client.get("/api/admin/gaps", headers=headers)).json()
+    assert not any("mimpi" in g["canonical"] for g in gaps_after)
+
+    # 2. Reviews queue: chunk review + ambiguous question review
+    await storage.save_chunk(
+        ArticleChunk(
+            id="chk_flag_1",
+            article_id="art_1",
+            site="isadanislam.org",
+            url="https://isadanislam.org/kasih",
+            title="Kasih Allah",
+            chunk_index=0,
+            text="Potongan teks dengan istilah yang perlu ditinjau.",
+            is_retrievable=False,
+            created_at=now,
+        )
+    )
+    await storage.save_flagged_chunk(
+        FlaggedChunk(
+            id="flg_1",
+            chunk_id="chk_flag_1",
+            article_id="art_1",
+            site="isadanislam.org",
+            url="https://isadanislam.org/kasih",
+            title="Kasih Allah",
+            text="Potongan teks dengan istilah Tuhan yang perlu ditinjau.",
+            matched_terms=["Tuhan"],
+            created_at=now,
+        )
+    )
+    await storage.save_question(
+        Question(
+            id="q_ambig_1",
+            session_id="s4",
+            uid="u4",
+            question_text="Saya bingung soal iman dan perasaan",
+            answer_text="Jawaban",
+            topic_slug="lainnya",
+            answer_source=AnswerSource.generated,
+            relevance=Relevance.ambiguous,
+            created_at=now,
+        )
+    )
+
+    rev_resp = await client.get("/api/admin/reviews", headers=headers)
+    assert rev_resp.status_code == 200
+    reviews = rev_resp.json()
+    assert any(r["id"] == "flg_1" for r in reviews)
+    assert any(r["id"] == "rev_q_q_ambig_1" for r in reviews)
+
+    # Resolve flagged chunk with rewrite decision
+    resolve_chunk_resp = await client.put(
+        "/api/admin/reviews/flg_1",
+        headers=headers,
+        json={
+            "decision": ChunkDecision.rewrite.value,
+            "rewritten_text": "Potongan teks dengan sebutan Allah yang sudah diperbaiki.",
+            "note": "Sudah diganti menjadi Allah",
+        },
+    )
+    assert resolve_chunk_resp.status_code == 200
+    updated_chunk = await storage.get_chunk("chk_flag_1")
+    assert updated_chunk is not None
+    assert updated_chunk.is_retrievable is True
+    assert "Allah" in updated_chunk.text
+
+    # 3. Export CSV (no PII)
+    csv_resp = await client.get("/api/admin/questions/export?channel=widget", headers=headers)
+    assert csv_resp.status_code == 200
+    assert "waktu,pertanyaan,topik,hasil,suka,kanal" in csv_resp.text
+    assert "widget" in csv_resp.text
+
+    # 4. Config placeholder guard
+    bad_cfg = await client.put(
+        "/api/admin/config/contact_number",
+        headers=headers,
+        json={"value": "PLACEHOLDER"},
+    )
+    assert bad_cfg.status_code == 422
+
+    # 5. Ingestion status & run
+    ing_status = await client.get("/api/admin/ingestion/status", headers=headers)
+    assert ing_status.status_code == 200
+    ing_run = await client.post("/api/admin/ingestion/run", headers=headers)
+    assert ing_run.status_code == 200
+    assert ing_run.json()["status"] == "completed"
+
+    # 6. Admin accounts CRUD
+    create_acc = await client.post(
+        "/api/admin/accounts",
+        headers=headers,
+        json={"email": "reviewer2@tanyaiman.id", "password": "secretpassword", "role": "reviewer"},
+    )
+    assert create_acc.status_code == 201
+    acc_id = create_acc.json()["id"]
+
+    list_acc = await client.get("/api/admin/accounts", headers=headers)
+    assert list_acc.status_code == 200
+    assert any(a["id"] == acc_id for a in list_acc.json())
+
+    del_acc = await client.delete(f"/api/admin/accounts/{acc_id}", headers=headers)
+    assert del_acc.status_code == 200

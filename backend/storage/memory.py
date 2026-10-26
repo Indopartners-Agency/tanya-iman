@@ -251,6 +251,12 @@ class MemoryStorage:
     async def save_admin_user(self, admin: AdminUser) -> None:
         self._admin_users[admin.id] = admin
 
+    async def list_admin_users(self) -> list[AdminUser]:
+        return sorted(self._admin_users.values(), key=lambda u: u.email.lower())
+
+    async def delete_admin_user(self, admin_id: str) -> None:
+        self._admin_users.pop(admin_id, None)
+
     async def count_super_admins(self) -> int:
         return sum(1 for u in self._admin_users.values() if u.role == AdminRole.super_admin)
 

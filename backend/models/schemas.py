@@ -55,6 +55,8 @@ class Question(BaseModel):
     answer_source: AnswerSource
     topic_slug: str | None = None
     cluster_id: str | None = None
+    channel: str = "web"
+    relevance: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     retrieved_chunk_ids: list[str] = Field(default_factory=list)
     like_count: int = 0
@@ -62,6 +64,13 @@ class Question(BaseModel):
     is_crisis: bool = False
     has_grounding: bool = False
     validator_failures: list[ValidatorCode] = Field(default_factory=list)
+    initial_validator_failures: list[ValidatorCode] = Field(default_factory=list)
+    repair_attempted: bool = False
+    flagged_for_review: bool = False
+    reviewed: bool = False
+    review_note: str | None = None
+    reviewed_by: str | None = None
+    reviewed_at: datetime | None = None
     model: str | None = None
     prompt_version: str | None = None
     latency_ms: int = 0
@@ -142,6 +151,7 @@ class FlaggedChunk(BaseModel):
     matched_terms: list[str] = Field(default_factory=list)
     text: str
     decision: ChunkDecision = ChunkDecision.pending
+    review_note: str | None = None
     created_at: datetime
     reviewed_at: datetime | None = None
     reviewed_by: str | None = None
@@ -158,8 +168,11 @@ class EngineResult(BaseModel):
     answer_text: str
     citations: list[Citation] = Field(default_factory=list)
     topic_slug: str | None = None
+    relevance: str | None = None
     retrieved_chunk_ids: list[str] = Field(default_factory=list)
     validator_failures: list[ValidatorCode] = Field(default_factory=list)
+    initial_validator_failures: list[ValidatorCode] = Field(default_factory=list)
+    repair_attempted: bool = False
     model: str | None = None
     prompt_version: str | None = None
 

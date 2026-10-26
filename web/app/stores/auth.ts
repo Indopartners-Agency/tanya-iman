@@ -12,9 +12,16 @@ import type { AuthMethod } from '@tanya-iman/shared'
  * Phase 3 (PIP Task 3.1) replaces the dev token below with the Firebase SDK.
  */
 export const useAuthStore = defineStore('auth', () => {
-  const uid = ref<string | null>(null)
-  const method = ref<AuthMethod | null>(null)
-  const ready = ref(false)
+  const storedUid =
+    typeof localStorage !== 'undefined' ? localStorage.getItem('ti_dev_uid') : null
+  const storedMethod =
+    typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('ti_dev_method') as AuthMethod | null)
+      : null
+
+  const uid = ref<string | null>(storedUid)
+  const method = ref<AuthMethod | null>(storedUid ? (storedMethod ?? 'guest') : null)
+  const ready = ref(Boolean(storedUid))
 
   const isAuthenticated = computed(() => uid.value !== null)
   const isGuest = computed(() => method.value === 'guest')
@@ -23,16 +30,38 @@ export const useAuthStore = defineStore('auth', () => {
     // Phase 2 stand-in for Firebase anonymous auth. The uid is persisted so a
     // reload keeps the same conversation, which is the behaviour the real
     // implementation must also have.
-    const stored = localStorage.getItem('ti_dev_uid')
+    const stored =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('ti_dev_uid') : null
     const rand =
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID().slice(0, 12)
         : Math.random().toString(36).slice(2, 14)
     const id = stored ?? `guest_${rand}`
-    localStorage.setItem('ti_dev_uid', id)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('ti_dev_uid', id)
+      localStorage.setItem('ti_dev_method', 'guest')
+    }
 
     uid.value = id
     method.value = 'guest'
+    ready.value = true
+  }
+
+  async function signInWithPhone(phone: string, channel: 'sms' | 'whatsapp' = 'whatsapp') {
+    // F-4 & F-25: upgrading from guest preserves the existing uid so active
+    // session and conversation history carry over seamlessly.
+    const cleanPhone = phone.replace(/\D/g, '')
+    const existingUid =
+      uid.value ??
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('ti_dev_uid') : null)
+    const id = existingUid ?? `user_${cleanPhone || 'verified'}`
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('ti_dev_uid', id)
+      localStorage.setItem('ti_dev_method', channel)
+    }
+
+    uid.value = id
+    method.value = channel
     ready.value = true
   }
 
@@ -44,7 +73,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function signOut() {
-    localStorage.removeItem('ti_dev_uid')
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('ti_dev_uid')
+      localStorage.removeItem('ti_dev_method')
+    }
     uid.value = null
     method.value = null
   }
@@ -56,6 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isGuest,
     signInAsGuest,
+    signInWithPhone,
     getIdToken,
     signOut,
   }

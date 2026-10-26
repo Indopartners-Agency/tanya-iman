@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Message } from '~/stores/chat'
+import { parseTextWithPhoneLinks } from '~/utils/phoneLinks'
 
 /**
  * The non-standard response states (Chat UX section 8).
@@ -12,6 +13,7 @@ const props = defineProps<{ message: Message }>()
 defineEmits<{ retry: [id: string] }>()
 
 const { t } = useCopy()
+const demo = useDemoMode()
 
 const remaining = ref(props.message.retryAfterSeconds ?? 0)
 let ticker: ReturnType<typeof setInterval> | undefined
@@ -36,6 +38,8 @@ const countdown = computed(() => {
     ? `${minutes} menit ${String(seconds).padStart(2, '0')} detik`
     : `${seconds} detik`
 })
+
+const parsedParts = computed(() => parseTextWithPhoneLinks(props.message.text))
 </script>
 
 <template>
@@ -49,17 +53,46 @@ const countdown = computed(() => {
     </p>
   </div>
 
-  <!-- Crisis: a card, not a reply. No scripture, no citations, no like. -->
+  <!-- Emotional deferral (F-44): empathetic referral card with tappable tel: link, no retry button, no like. -->
+  <div
+    v-else-if="message.answerSource === 'emotional_deferral'"
+    class="rounded-2xl rounded-bl-md bg-info-bg px-4 py-3.5 text-[15px] leading-relaxed text-info"
+    role="note"
+  >
+    <p class="whitespace-pre-wrap">
+      <template v-for="(part, i) in parsedParts" :key="i">
+        <a
+          v-if="part.tel"
+          :href="`tel:${part.tel}`"
+          class="inline-flex min-h-[44px] items-center font-medium underline underline-offset-2"
+        >
+          {{ part.text }}
+        </a>
+        <span v-else>{{ part.text }}</span>
+      </template>
+    </p>
+  </div>
+
+  <!-- Crisis (F-30): a card, not a reply. No scripture, no citations, no like. Tappable tel: numbers. -->
   <div
     v-else-if="message.answerSource === 'crisis'"
     class="rounded-2xl border-l-4 bg-care-bg px-5 py-4 text-[15px] leading-relaxed text-care"
     style="border-left-color: var(--status-care-border)"
     role="note"
   >
-    <p class="whitespace-pre-wrap">{{ message.text }}</p>
-    <!-- The real script and its verified helpline numbers are owned by the
-         client's pastoral team (SOW B1) and are not shipped here. -->
-    <p class="meta mt-3 italic">{{ t('ui.crisis_demo_note') }}</p>
+    <p class="whitespace-pre-wrap">
+      <template v-for="(part, i) in parsedParts" :key="i">
+        <a
+          v-if="part.tel"
+          :href="`tel:${part.tel}`"
+          class="inline-flex min-h-[44px] items-center font-medium underline underline-offset-2"
+        >
+          {{ part.text }}
+        </a>
+        <span v-else>{{ part.text }}</span>
+      </template>
+    </p>
+    <p v-if="demo" class="meta mt-3 italic">{{ t('ui.crisis_demo_note') }}</p>
   </div>
 
   <!-- Rate limited: a live countdown, resolving on its own. -->

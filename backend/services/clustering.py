@@ -188,7 +188,10 @@ async def rename_cluster(storage: Storage, cluster_id: str, new_canonical: str) 
 
 
 async def promote_cluster_to_curated(storage: Storage, cluster_id: str, admin_email: str) -> Topic:
-    """Promotes a cluster's canonical text to a curated answer draft on its topic."""
+    """Promotes a cluster's canonical text to a curated answer draft on its topic.
+
+    Does not overwrite an existing published curated answer with the question text.
+    """
     cluster = await storage.get_cluster(cluster_id)
     if not cluster:
         raise ValueError(f"Cluster '{cluster_id}' not found")
@@ -198,8 +201,10 @@ async def promote_cluster_to_curated(storage: Storage, cluster_id: str, admin_em
         raise ValueError(f"Topic '{cluster.topic_slug}' not found")
 
     now = datetime.now(UTC)
-    topic.curated_answer = cluster.canonical_text
-    topic.curated_status = "draft"
+    if not (topic.curated_status == "published" and topic.curated_answer):
+        if not topic.curated_answer:
+            topic.curated_answer = cluster.canonical_text
+        topic.curated_status = "draft"
     topic.updated_by = admin_email
     topic.updated_at = now
 

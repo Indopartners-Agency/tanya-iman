@@ -55,6 +55,8 @@ class RAGEngine(AnswerEngine):
         # Step 1: Relevance Classifier & Topic Resolver (AI Spec 4 & 5)
         class_res = await self.classifier.classify(request.question_text, request.context)
 
+        rel_val = getattr(class_res.relevance, "value", str(class_res.relevance))
+
         # Handle emotional_only inquiry (F-44, AI Spec 10.9)
         if class_res.relevance is Relevance.emotional_only:
             # Load optional contact details from system config
@@ -75,6 +77,7 @@ class RAGEngine(AnswerEngine):
                     contact_number=contact_number,
                 ),
                 topic_slug=class_res.topic_slug,
+                relevance=rel_val,
                 prompt_version=settings.prompt_version,
             )
 
@@ -84,6 +87,7 @@ class RAGEngine(AnswerEngine):
                 answer_source=AnswerSource.refusal,
                 answer_text=response("refusal"),
                 topic_slug=class_res.topic_slug,
+                relevance=rel_val,
                 prompt_version=settings.prompt_version,
             )
 
@@ -95,6 +99,7 @@ class RAGEngine(AnswerEngine):
                 answer_text=curated_res.answer_text,
                 citations=curated_res.citations,
                 topic_slug=curated_res.topic_slug,
+                relevance=rel_val,
                 prompt_version=settings.prompt_version,
             )
 
@@ -106,6 +111,7 @@ class RAGEngine(AnswerEngine):
                 answer_source=AnswerSource.no_grounding,
                 answer_text=response("no_grounding"),
                 topic_slug=class_res.topic_slug,
+                relevance=rel_val,
                 prompt_version=settings.prompt_version,
             )
 
@@ -152,12 +158,16 @@ class RAGEngine(AnswerEngine):
                     "Repaired answer failed validation again with %s; serving fallback template",
                     repaired_val.codes,
                 )
+                combined_codes = list(dict.fromkeys([*val_res.codes, *repaired_val.codes]))
                 return EngineResult(
-                    answer_source=AnswerSource.generated,
+                    answer_source=AnswerSource.error,
                     answer_text=response("fallback"),
                     topic_slug=class_res.topic_slug,
+                    relevance=rel_val,
                     retrieved_chunk_ids=[p.id for p in passages],
-                    validator_failures=repaired_val.codes,
+                    validator_failures=combined_codes,
+                    initial_validator_failures=val_res.codes,
+                    repair_attempted=True,
                     model=repaired_comp.model,
                     prompt_version=settings.prompt_version,
                 )
@@ -168,8 +178,11 @@ class RAGEngine(AnswerEngine):
                 answer_text=repaired_comp.answer,
                 citations=repaired_citations,
                 topic_slug=class_res.topic_slug,
+                relevance=rel_val,
                 retrieved_chunk_ids=[p.id for p in passages],
                 validator_failures=val_res.codes,  # Record original failures that required repair
+                initial_validator_failures=val_res.codes,
+                repair_attempted=True,
                 model=repaired_comp.model,
                 prompt_version=settings.prompt_version,
             )
@@ -180,8 +193,11 @@ class RAGEngine(AnswerEngine):
             answer_text=comp_res.answer,
             citations=citations,
             topic_slug=class_res.topic_slug,
+            relevance=rel_val,
             retrieved_chunk_ids=[p.id for p in passages],
             validator_failures=[],
+            initial_validator_failures=[],
+            repair_attempted=False,
             model=comp_res.model,
             prompt_version=settings.prompt_version,
         )

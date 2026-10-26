@@ -19,7 +19,9 @@ const question = ref<any>(null)
 const loading = ref(true)
 const confirmDelete = ref(false)
 const isDeleting = ref(false)
+const isFlagging = ref(false)
 const toast = ref<string | null>(null)
+const expandedChunks = ref<Record<string, boolean>>({})
 
 const id = String(route.params.id || '')
 
@@ -30,6 +32,38 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function toggleChunkExpand(chunkId: string) {
+  expandedChunks.value[chunkId] = !expandedChunks.value[chunkId]
+}
+
+async function copyLink() {
+  try {
+    const href = typeof window !== 'undefined' ? window.location.href : `/pertanyaan/${id}`
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(href)
+    }
+    toast.value = 'Tautan pertanyaan berhasil disalin ke papan klip.'
+  } catch {
+    toast.value = 'Gagal menyalin tautan.'
+  }
+}
+
+async function flagForReview() {
+  if (isFlagging.value) return
+  isFlagging.value = true
+  try {
+    await api.flagQuestion(id)
+    if (question.value) {
+      question.value.flaggedForReview = true
+    }
+    toast.value = 'Pertanyaan berhasil ditandai ke dalam Antrean Tinjauan.'
+  } catch (err: any) {
+    toast.value = `Gagal menandai pertanyaan: ${err?.message || 'Terjadi kesalahan'}`
+  } finally {
+    isFlagging.value = false
+  }
+}
 
 async function doDelete() {
   confirmDelete.value = false
@@ -56,11 +90,16 @@ async function doDelete() {
   <div v-else-if="question">
     <PageHeader :title="t('detail.title')" :subtitle="question.id">
       <template #actions>
-        <button type="button" class="meta underline underline-offset-2">
+        <button type="button" class="meta underline underline-offset-2" @click="copyLink">
           {{ t('detail.copy_link') }}
         </button>
-        <button type="button" class="meta underline underline-offset-2">
-          {{ t('detail.flag') }}
+        <button
+          type="button"
+          :disabled="isFlagging || question.flaggedForReview"
+          class="meta underline underline-offset-2 disabled:opacity-50"
+          @click="flagForReview"
+        >
+          {{ question.flaggedForReview ? 'Sudah ditandai' : t('detail.flag') }}
         </button>
         <button
           v-if="session.canAdminister"
@@ -160,28 +199,75 @@ async function doDelete() {
                 />
                 <span v-if="chunk.site" class="meta">{{ chunk.site }}</span>
               </div>
-              <p class="meta mt-1.5 line-clamp-3">{{ chunk.text }}</p>
+              <p
+                :class="[
+                  'meta mt-1.5 whitespace-pre-wrap',
+                  expandedChunks[chunk.id] ? '' : 'line-clamp-3',
+                ]"
+              >
+                {{ chunk.text }}
+              </p>
+              <button
+                v-if="chunk.text && chunk.text.length > 140"
+                type="button"
+                class="mt-1 text-[12px] text-accent underline underline-offset-2"
+                @click="toggleChunkExpand(chunk.id)"
+              >
+                {{ expandedChunks[chunk.id] ? 'Sembunyikan' : 'Tampilkan lengkap' }}
+              </button>
             </li>
           </ul>
         </section>
 
         <section class="rounded-xl border border-subtle bg-surface p-4">
           <p class="meta">{{ t('detail.validation') }}</p>
-          <ul v-if="question.validators && question.validators.length" class="mt-2 space-y-1.5">
+          <ul v-if="question.validators && question.validators.length" class="mt-2 space-y-2.5">
             <li
               v-for="validator in question.validators"
               :key="validator.code"
-              class="flex items-center justify-between gap-2 text-[13px]"
+              class="border-b border-subtle/60 pb-2 last:border-b-0 last:pb-0"
             >
-              <span class="text-primary">{{ validator.code }} {{ validator.label }}</span>
-              <StatusChip
-                :label="validator.pass ? 'Lolos' : 'Gagal'"
-                :tone="validator.pass ? 'success' : 'danger'"
-              />
+              <div class="flex items-center justify-between gap-2 text-[13px]">
+                <span class="text-primary">{{ validator.code }} {{ validator.label }}</span>
+                <StatusChip
+                  :label="validator.pass ? 'Lolos' : 'Gagal'"
+                  :tone="validator.pass ? 'success' : 'danger'"
+                />
+              </div>
+              <p v-if="validator.measured" class="meta mt-0.5">{{ validator.measured }}</p>
+              <div
+                v-if="validator.failureCodes && validator.failureCodes.length"
+                class="mt-1 flex flex-wrap gap-1"
+              >
+                <span
+                  v-for="fc in validator.failureCodes"
+                  :key="fc"
+                  class="rounded bg-danger-bg px-1.5 py-0.5 text-[11px] font-medium text-danger"
+                >
+                  {{ fc }}
+                </span>
+              </div>
             </li>
           </ul>
-          <p v-if="question.validators && question.validators[0]" class="meta mt-2">
-            {{ question.validators[0].measured }}
+        </section>
+
+        <!-- Repair diagnostic block (Admin UX section 8) -->
+        <section
+          v-if="question.repair?.attempted || (question.validatorFailures && question.validatorFailures.length > 0)"
+          class="rounded-xl border border-subtle bg-surface p-4"
+        >
+          <p class="meta">{{ t('detail.repair') }}</p>
+          <div class="mt-2 flex items-center gap-2">
+            <StatusChip
+              :label="question.repair?.succeeded ? 'Diperbaiki' : 'Gagal Diperbaiki'"
+              :tone="question.repair?.succeeded ? 'warning' : 'danger'"
+            />
+          </div>
+          <p class="mt-2 text-[13px] text-primary">
+            {{
+              question.repair?.summary ||
+              `Perbaikan dijalankan untuk kode: ${(question.validatorFailures || []).join(', ')}`
+            }}
           </p>
         </section>
 

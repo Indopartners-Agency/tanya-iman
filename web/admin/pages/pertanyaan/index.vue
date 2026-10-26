@@ -23,6 +23,11 @@ const loading = ref(true)
 const search = ref(String(route.query.q ?? ''))
 const topicFilter = ref(String(route.query.topik ?? ''))
 const resultFilter = ref(String(route.query.hasil ?? ''))
+const channelFilter = ref(String(route.query.kanal ?? ''))
+const validatorFilter = ref(String(route.query.validator ?? ''))
+const dateFrom = ref(String(route.query.dari ?? ''))
+const dateTo = ref(String(route.query.sampai ?? ''))
+const exportError = ref<string | null>(null)
 
 onMounted(async () => {
   try {
@@ -37,15 +42,22 @@ onMounted(async () => {
   }
 })
 
-watch([search, topicFilter, resultFilter], ([q, topik, hasil]) => {
-  router.replace({
-    query: {
-      ...(q ? { q } : {}),
-      ...(topik ? { topik } : {}),
-      ...(hasil ? { hasil } : {}),
-    },
-  })
-})
+watch(
+  [search, topicFilter, resultFilter, channelFilter, validatorFilter, dateFrom, dateTo],
+  ([q, topik, hasil, kanal, validator, dari, sampai]) => {
+    router.replace({
+      query: {
+        ...(q ? { q } : {}),
+        ...(topik ? { topik } : {}),
+        ...(hasil ? { hasil } : {}),
+        ...(kanal ? { kanal } : {}),
+        ...(validator ? { validator } : {}),
+        ...(dari ? { dari } : {}),
+        ...(sampai ? { sampai } : {}),
+      },
+    })
+  },
+)
 
 const rows = computed(() =>
   questions.value.filter((row) => {
@@ -53,9 +65,27 @@ const rows = computed(() =>
       return false
     if (topicFilter.value && row.topicSlug !== topicFilter.value) return false
     if (resultFilter.value && row.result !== resultFilter.value) return false
+    if (channelFilter.value && row.channel !== channelFilter.value) return false
+    if (validatorFilter.value === 'gagal' && !row.flags.includes('validator')) return false
+    if (validatorFilter.value === 'lolos' && row.flags.includes('validator')) return false
+    if (dateFrom.value) {
+      const fromTs = new Date(dateFrom.value).getTime()
+      if (!Number.isNaN(fromTs) && new Date(row.askedAt).getTime() < fromTs) return false
+    }
+    if (dateTo.value) {
+      const endStr = dateTo.value.length === 10 ? `${dateTo.value}T23:59:59.999` : dateTo.value
+      const toTs = new Date(endStr).getTime()
+      if (!Number.isNaN(toTs) && new Date(row.askedAt).getTime() > toTs) return false
+    }
     return true
   }),
 )
+
+const channelLabel: Record<string, string> = {
+  web: t('common.channel_web'),
+  widget: t('common.channel_widget'),
+  android: t('common.channel_android'),
+}
 
 const activeFilters = computed(() => [
   ...(search.value ? [{ key: 'q', label: `“${search.value}”` }] : []),
@@ -68,18 +98,39 @@ const activeFilters = computed(() => [
       ]
     : []),
   ...(resultFilter.value ? [{ key: 'hasil', label: t(`result.${resultFilter.value}`) }] : []),
+  ...(channelFilter.value
+    ? [{ key: 'kanal', label: channelLabel[channelFilter.value] ?? channelFilter.value }]
+    : []),
+  ...(validatorFilter.value
+    ? [
+        {
+          key: 'validator',
+          label: validatorFilter.value === 'gagal' ? 'Validator gagal' : 'Validator lolos',
+        },
+      ]
+    : []),
+  ...(dateFrom.value ? [{ key: 'dari', label: `Dari: ${dateFrom.value}` }] : []),
+  ...(dateTo.value ? [{ key: 'sampai', label: `Sampai: ${dateTo.value}` }] : []),
 ])
 
 function removeFilter(key: string) {
   if (key === 'q') search.value = ''
   if (key === 'topik') topicFilter.value = ''
   if (key === 'hasil') resultFilter.value = ''
+  if (key === 'kanal') channelFilter.value = ''
+  if (key === 'validator') validatorFilter.value = ''
+  if (key === 'dari') dateFrom.value = ''
+  if (key === 'sampai') dateTo.value = ''
 }
 
 function clearFilters() {
   search.value = ''
   topicFilter.value = ''
   resultFilter.value = ''
+  channelFilter.value = ''
+  validatorFilter.value = ''
+  dateFrom.value = ''
+  dateTo.value = ''
 }
 
 const resultTone: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
@@ -92,13 +143,15 @@ const resultTone: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'ne
   error: 'danger',
 }
 
-const channelLabel: Record<string, string> = {
-  web: t('common.channel_web'),
-  widget: t('common.channel_widget'),
-  android: t('common.channel_android'),
-}
-
-const resultKeys = ['generated', 'curated', 'refusal', 'no_grounding', 'crisis', 'error']
+const resultKeys = [
+  'generated',
+  'curated',
+  'refusal',
+  'no_grounding',
+  'crisis',
+  'emotional_deferral',
+  'error',
+]
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleString('id-ID', {
@@ -113,19 +166,40 @@ function timeLabel(iso: string): string {
  * F-36: exports every row matching the current filter, not the page on screen.
  * No phone number is included in any form (section 7.4).
  */
-function exportCsv() {
-  const header = ['waktu', 'pertanyaan', 'topik', 'hasil', 'suka', 'kanal']
-  const lines = rows.value.map((row: QuestionRow) =>
-    [
-      row.askedAt,
-      `"${row.question.replace(/"/g, '""')}"`,
-      row.topicLabel,
-      row.result,
-      row.likes,
-      row.channel,
-    ].join(','),
-  )
-  const blob = new Blob([[header.join(','), ...lines].join('\n')], {
+async function exportCsv() {
+  exportError.value = null
+  let csvText = ''
+  try {
+    csvText = await api.exportQuestionsCsv({
+      search: search.value || undefined,
+      topic: topicFilter.value || undefined,
+      result: resultFilter.value || undefined,
+      channel: channelFilter.value || undefined,
+      validator: validatorFilter.value || undefined,
+      dateFrom: dateFrom.value || undefined,
+      dateTo: dateTo.value || undefined,
+    })
+  } catch (err: any) {
+    exportError.value = err?.message || 'Gagal mengekspor CSV.'
+    return
+  }
+
+  if (!csvText) {
+    const header = ['waktu', 'pertanyaan', 'topik', 'hasil', 'suka', 'kanal']
+    const lines = rows.value.map((row: QuestionRow) =>
+      [
+        row.askedAt,
+        `"${row.question.replace(/"/g, '""')}"`,
+        row.topicLabel,
+        row.result,
+        row.likes,
+        row.channel,
+      ].join(','),
+    )
+    csvText = [header.join(','), ...lines].join('\n')
+  }
+
+  const blob = new Blob([csvText], {
     type: 'text/csv;charset=utf-8',
   })
   const url = URL.createObjectURL(blob)
@@ -161,12 +235,19 @@ const columns = [
       </template>
     </PageHeader>
 
+    <div
+      v-if="exportError"
+      class="mb-3 rounded-lg bg-danger-bg px-3 py-2 text-[13px] text-danger"
+    >
+      {{ exportError }}
+    </div>
+
     <div class="mb-3 flex flex-wrap gap-2">
       <input
         v-model="search"
         type="search"
         :placeholder="t('questions.search')"
-        class="min-h-[40px] flex-1 rounded-lg border border-strong bg-surface px-3 text-[13.5px] text-primary outline-none focus:border-accent"
+        class="min-h-[40px] min-w-[200px] flex-1 rounded-lg border border-strong bg-surface px-3 text-[13.5px] text-primary outline-none focus:border-accent"
       />
       <select
         v-model="topicFilter"
@@ -186,6 +267,35 @@ const columns = [
           {{ t(`result.${key}`) }}
         </option>
       </select>
+      <select
+        v-model="channelFilter"
+        class="min-h-[40px] rounded-lg border border-strong bg-surface px-2 text-[13.5px] text-primary"
+      >
+        <option value="">{{ t('questions.col_channel') }}</option>
+        <option value="web">{{ t('common.channel_web') }}</option>
+        <option value="widget">{{ t('common.channel_widget') }}</option>
+        <option value="android">{{ t('common.channel_android') }}</option>
+      </select>
+      <select
+        v-model="validatorFilter"
+        class="min-h-[40px] rounded-lg border border-strong bg-surface px-2 text-[13.5px] text-primary"
+      >
+        <option value="">Validator</option>
+        <option value="gagal">Validator gagal</option>
+        <option value="lolos">Validator lolos</option>
+      </select>
+      <input
+        v-model="dateFrom"
+        type="date"
+        aria-label="Dari tanggal"
+        class="min-h-[40px] rounded-lg border border-strong bg-surface px-2 text-[13px] text-primary"
+      />
+      <input
+        v-model="dateTo"
+        type="date"
+        aria-label="Sampai tanggal"
+        class="min-h-[40px] rounded-lg border border-strong bg-surface px-2 text-[13px] text-primary"
+      />
     </div>
 
     <FilterChips :filters="activeFilters" @remove="removeFilter" @clear="clearFilters" />

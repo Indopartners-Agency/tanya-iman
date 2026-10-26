@@ -6,14 +6,34 @@
  * data and links out once that URL exists.
  */
 const { t } = useCopy()
+const auth = useAuthStore()
+const chat = useChatStore()
+const router = useRouter()
+
+const backTarget = computed(() =>
+  auth.isAuthenticated || chat.messages.length > 0 ? '/chat' : '/',
+)
+
+function goBack() {
+  if (auth.isAuthenticated || chat.messages.length > 0) {
+    void router.push('/chat')
+    return
+  }
+  if (typeof window !== 'undefined' && window.history.length > 1) {
+    router.back()
+    return
+  }
+  void router.push('/')
+}
 </script>
 
 <template>
   <main class="min-h-dvh bg-base px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
     <div class="mx-auto max-w-measure">
       <NuxtLink
-        to="/"
+        :to="backTarget"
         class="mb-6 flex min-h-[44px] items-center gap-1.5 text-[14px] text-secondary"
+        @click.prevent="goBack"
       >
         <span aria-hidden="true">&#8592;</span> {{ t('ui.back') }}
       </NuxtLink>

@@ -2,11 +2,11 @@
 
 Tactical **order of work** for open and scheduled items in [backlog.md](backlog.md). Strategic phases stay in [Project Implementation Plan](../project-implementation-plan.md) (PIP).
 
-**Last updated:** 2026-09-29 — Waves 1, 2, 3, 5, 6 & 7 shipped; Wave 4 (Phone & OTP Auth) deferred to backlog on hold.
+**Last updated:** 2026-10-26 — Waves 1, 2, 3, 5, 6, 7 & 8 shipped; Wave 4 (Phone & OTP Auth) deferred to backlog on hold.
 
 ---
 
-## What's Next *(2026-09-29)*
+## What's Next *(2026-10-26)*
 
 | # | Wave | Status | Scope |
 |---|------|--------|-------|
@@ -15,10 +15,9 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 | — | **Wave 3** | ✅ shipped | Admin Authentication & Security Hardening — JWT login, refresh token, bcrypt, dual-layer RBAC, super_admin bootstrap, portal session store (**BL-SEC-001**, **BL-SEC-002**) |
 | — | **Wave 5** | ✅ shipped | Corpus Ingestion & RAG Pipeline — 5-site crawler, token chunker, Vertex AI multilingual embeddings, Firestore vector retriever (**BL-CORP-001**, **BL-CORP-002**, **BL-CORP-003**, **BL-CORP-004**) |
 | — | **Wave 6** | ✅ shipped | Production Answer Engine — Classifier, curated override, composer, compliance validators (V1–V5), and pipeline integration (**BL-ENG-001**, **BL-ENG-002**, **BL-ENG-003**, **BL-ENG-004**) |
-| — | **Wave 7** | ✅ shipped | Editorial Surface & Admin Portal — Question review, topic metrics, curated editor with V1–V4 checks, clustering, gaps, and audit logs (**BL-ADMIN-001** – **BL-ADMIN-006**) |
+| — | **Wave 7** | ✅ shipped | Editorial Surface & Admin Portal — Question review, live chunk diagnostics, topic metrics, curated editor, live clustering pipeline & backfill, gaps, question delete, CORS fix, and audit logs (**BL-ADMIN-001** – **BL-ADMIN-006**) |
+| — | **Wave 8** | ✅ shipped | PRD & UX Compliance Audit Remediation — Admin route protection, real corpus citations & V1–V4 validation, gap/topic/cluster refinements, unified review queue & question diagnostics, question filters & CSV export, interactive settings & ingestion controls, seeker chat persistence & answer states, RAG validator fallback (**BL-SEC-003**, **BL-ENG-005**, **BL-ADMIN-007** – **BL-ADMIN-011**, **BL-UI-001**) |
 | **4** | **Wave 4** | ⏸️ on_hold | Live Phone Auth (SMS & WhatsApp OTP) & Guest Conversion — (**BL-AUTH-001**, **BL-AUTH-002**, **BL-AUTH-003**, **BL-AUTH-004**) |
-
-**All planned waves shipped.** Next: Wave 4 (Phone Auth) when ready to resume.
 
 ---
 
@@ -153,26 +152,22 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 
 ---
 
-### Wave 7 — Editorial Surface & Admin Portal ✅ *(closed 2026-09-29)*
+### Wave 7 — Editorial Surface & Admin Portal ✅ *(closed 2026-09-29, enhanced 2026-10-26 in `2d75a1f`)*
 
 **Status:** completed
 
 **Impact:** [Editorial Surface & Moderation](backlog.md#editorial-surface--moderation) — PIP Phase 6 & PRD F-20 – F-23, F-29, F-34 – F-37.
 
 **Shipped:**
-- Question list and filtering API: `GET /api/admin/questions`, `GET /api/admin/questions/{id}` with topic/crisis/refusal/source filters and pagination.
+- Question list, detail diagnostics (`retrieved_chunks` & `cited_urls`), and audited deletion API (`GET /api/admin/questions`, `GET /api/admin/questions/{id}`, `DELETE /api/admin/questions/{id}`).
 - Topic analytics API: `GET /api/admin/topics`, `GET /api/admin/topics/{slug}` with question counts, like counts, curated status.
 - Content gaps API: `GET /api/admin/gaps` listing ungrounded topics.
-- Curated answer editor API: `PUT /api/admin/topics/{slug}/answer` with live V1–V4 compliance validation, V4/V5 waived for editorial content.
-- Similar-question clustering service (`services/clustering.py`): cosine similarity assignment, within-topic isolation, running centroid update.
-- Cluster management API: `GET /api/admin/clusters`, `PUT /clusters/{id}/rename`, `POST /clusters/{id}/merge`, `POST /clusters/{id}/promote`, `DELETE /clusters/{id}`.
-- Audit log: `GET /api/admin/audit` (super_admin only) — every editorial and cluster action writes a log entry.
-- Retention purge: `POST /api/admin/purge` — reads `retention_months` config, deletes old questions, writes audit entry.
-- Admin Portal UI (`web/admin/`) fully wired to live API: dashboard, topics, questions, kekosongan, serupa (clusters), tinjauan (reviews), pengaturan.
-- `useAdminApi.ts` composable with `getClusters`, `renameCluster`, `mergeCluster`, `promoteCluster`, `getAuditLogs`.
-- 121 passing backend tests (14 new tests across `test_clustering.py` and `test_admin_audit.py`).
-- Backend deployed: Cloud Run revision `tanya-iman-backend-00007-9hr`.
-- Admin portal deployed: `https://tanya-iman-admin-dev.web.app`.
+- Curated answer editor API: `PUT /api/admin/topics/{slug}/answer` with live V1–V4 compliance validation.
+- Similar-question clustering service (`services/clustering.py`): live background clustering in `POST /api/chat/messages`, Firestore backfill (`POST /api/admin/clusters/backfill`), cosine similarity assignment (`cluster_similarity_threshold`), within-topic isolation, running centroid update.
+- Cluster management API & UI modals (`/serupa`): `GET /api/admin/clusters`, `PUT /clusters/{id}/rename`, `POST /clusters/{id}/merge`, `POST /clusters/{id}/promote`, `DELETE /clusters/{id}`, topic filter, and member question drawer.
+- Audit log (`GET /api/admin/audit`) & Retention purge (`POST /api/admin/purge`) wired to live `/pengaturan` page.
+- Explicit CORS preflight configuration (`allow_methods`, `allow_headers`) on backend (`main.py`).
+- 133 passing backend tests (`test_clustering.py`, `test_admin_audit.py`, `test_api_admin.py`).
 
 | ID | Title | Status |
 |----|-------|--------|
@@ -182,3 +177,32 @@ Tactical **order of work** for open and scheduled items in [backlog.md](backlog.
 | ~~**BL-ADMIN-004**~~ | ~~Similar-question clustering within topics~~ | completed |
 | ~~**BL-ADMIN-005**~~ | ~~Editorial Web Admin Portal UI in Nuxt 3 SPA~~ | completed |
 | ~~**BL-ADMIN-006**~~ | ~~Audit log tracking and retention policy purge~~ | completed |
+
+---
+
+### Wave 8 — PRD & UX Compliance Audit Remediation ✅ *(closed 2026-10-26)*
+
+**Status:** completed
+
+**Impact:** [Security & Admin Auth](backlog.md#security--admin-auth) + [AI Answer Engine & Evaluation](backlog.md#ai-answer-engine--evaluation) + [Editorial Surface & Moderation](backlog.md#editorial-surface--moderation) + [Seeker Web App & Channels](backlog.md#seeker-web-app--channels) — PRD F-3, F-4, F-8, F-14, F-17, F-19, F-23, F-25, F-28–F-30, F-32, F-34–F-37, F-43–F-45 & Admin/Chat UX Specifications.
+
+**Shipped:**
+- Admin portal global route middleware (`middleware/auth.global.ts`), session `canEdit`/`canAdminister` authentication guard, 401 redirect without silent fixture fallback, and live sidebar badge counts (`liveGapCount`, `liveReviewCount`).
+- Real corpus article search (`GET /api/admin/articles`), curated citation persistence, and full V1–V4 validation in `/editor/[slug]` and `PUT /api/admin/topics/{slug}/answer`.
+- Content gap filtering to ungrounded theology questions, frequency aggregation, and `POST /api/admin/gaps/{id}/resolve`; topic metrics exclusion (`is_crisis`, `is_refused`, `emotional_deferral`) and `no_grounding` `refusal_rate`; safe cluster promotion preserving published curated answers.
+- Unified review queue (`GET /api/admin/reviews`, `PUT /api/admin/reviews/{id}`) across flagged chunks, crisis, validator failures, emotional deferral, and ambiguous questions with `ChunkDecision` persistence (`accept`, `rewrite`, `exclude`); question detail (`GET /api/admin/questions/{id}`, `POST /api/admin/questions/{id}/flag`) with expandable chunk snippets, per-validator `measured` strings & failure codes, and `RepairDetail` diagnostics.
+- Question list filters (`q`, `topic`, `source`, `channel`, `validator=gagal`, `date_from`, `date_to`), session platform channel tracking, and `GET /api/admin/questions/export` CSV endpoint.
+- Interactive system & support contact configuration with placeholder rejection, corpus ingestion status & trigger (`GET/POST /api/admin/ingestion/*`), admin account management (`GET/POST/DELETE /api/admin/accounts`), and audit log filters (`actor`, `action`, `date_from`, `date_to`).
+- Seeker chat session & auth persistence across `/privasi` navigation, guest-to-phone upgrade, and page reloads; dedicated `emotional_deferral` state and tappable `tel:` helpline links (`AnswerStates.vue`, `utils/phoneLinks.ts`).
+- RAG validator double-failure fallback returning `AnswerSource.error` (`likeable = False`) and preserving combined initial + repair validator failure codes.
+
+| ID | Title | Status |
+|----|-------|--------|
+| ~~**BL-SEC-003**~~ | ~~Admin portal global route protection, session `canEdit` hardening, 401 redirect & live sidebar badges~~ | completed |
+| ~~**BL-ADMIN-007**~~ | ~~Curated answer editor real corpus article search (`GET /api/admin/articles`), citation persistence & full V1–V4 validation~~ | completed |
+| ~~**BL-ADMIN-008**~~ | ~~Content gaps `no_grounding` aggregation & resolution, topic metrics exclusion & `refusal_rate`, and safe cluster promotion~~ | completed |
+| ~~**BL-ADMIN-009**~~ | ~~Unified review queue sources & persistent decisions (`/tinjauan`) and question detail actions & repair diagnostics (`/pertanyaan/[id]`)~~ | completed |
+| ~~**BL-ADMIN-010**~~ | ~~Question list date/validator/channel/`emotional_deferral` filters, session channel tracking & `GET /api/admin/questions/export`~~ | completed |
+| ~~**BL-ADMIN-011**~~ | ~~Interactive settings (`contact_*` & system config), ingestion status/trigger API, admin account management & audit log filters~~ | completed |
+| ~~**BL-UI-001**~~ | ~~Seeker chat session persistence across `/privasi` & reload, `emotional_deferral` card, and tappable `tel:` crisis links~~ | completed |
+| ~~**BL-ENG-005**~~ | ~~RAG validator post-repair fallback source (`AnswerSource.error`, non-likeable) and full failure code preservation~~ | completed |

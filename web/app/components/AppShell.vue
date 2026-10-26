@@ -62,6 +62,15 @@ async function signOut() {
           class="absolute right-0 top-12 z-20 w-56 overflow-hidden rounded-xl border border-subtle bg-surface shadow-md"
         >
           <NuxtLink
+            v-if="auth.isGuest"
+            to="/masuk?channel=whatsapp"
+            class="block border-b border-subtle px-4 py-3 text-[14px] font-medium text-accent hover:bg-raised"
+            :title="t('ui.upgrade_prompt')"
+            @click="menuOpen = false"
+          >
+            {{ t('ui.upgrade_action') }}
+          </NuxtLink>
+          <NuxtLink
             to="/privasi"
             class="block px-4 py-3 text-[14px] text-primary hover:bg-raised"
             @click="menuOpen = false"
