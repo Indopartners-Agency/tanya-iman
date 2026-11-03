@@ -100,7 +100,7 @@
     "rule_terminology": "Sebutan",
     "rule_scripture": "Ayat",
     "rule_citations": "Tautan",
-    "words": "{count} / 25–250 kata",
+    "words": "{count} / 25–350 kata",
     "terminology_ok": "Sebutan sudah sesuai.",
     "terminology_bad": "Ganti ‘{word}’ — gunakan ‘Allah’ atau ‘Isa Al-Masih’.",
     "citations_count": "{count} dari 1–2 tautan dipilih",

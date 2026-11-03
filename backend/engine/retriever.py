@@ -12,10 +12,12 @@ PIP Task 4.4 & AI Spec §7-§8:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
 from config.loader import approved_domains
+from ingestion.crawler import is_non_article_page
 from ingestion.embedder import Embedder, get_embedder
 from models import ArticleChunk, Citation
 from storage import Storage
@@ -27,6 +29,61 @@ TOP_K_RETRIEVED = 8
 MAX_RETURNED_CHUNKS = 4
 MAX_CHUNKS_PER_ARTICLE = 2
 MIN_SURVIVING_CHUNKS = 2
+
+_FOLLOWUP_PREFIX_RE = re.compile(
+    r"^\s*(?:lalu|terus|kemudian|jadi|lantas|kalau\s+begitu|berarti|nah)\b",
+    re.IGNORECASE,
+)
+
+_ANAPHORA_RE = re.compile(
+    r"\b(?:hal\s+itu|hal\s+tersebut|ajaran\s+itu|ayat\s+itu|jaminannya|maksudnya|buktinya|alasannya|contohnya|beliau|dia|mereka|tadi|tersebut|begitu|demikian)\b",
+    re.IGNORECASE,
+)
+
+_THEOLOGY_SUBJECT_RE = re.compile(
+    r"\b(?:isa|al-masih|allah|(?:ke)?tuhan(?:an)?|yesus|alkitab|injil|taurat|zabur|al-quran|quran|(?:ber)?puasa|ramadan|ramadhan|(?:ber)?doa|(?:ber)?ibadah|sholat|salat|(?:di)?salib(?:kan)?|penyaliban|dosa|surga|neraka|trinitas|tritunggal|keselamatan|pengampunan|muhammad|nabi|rasul|kristen|nasrani|islam|muslim|pernikahan|wanita|kematian|kebangkitan|kiamat|akhirat|(?:meny)?embah)\b",
+    re.IGNORECASE,
+)
+
+
+def is_followup_question(question: str) -> bool:
+    """Return True if the question is a context-dependent follow-up."""
+    q = (question or "").strip()
+    if not q:
+        return False
+    if _FOLLOWUP_PREFIX_RE.search(q):
+        return True
+    if _ANAPHORA_RE.search(q) and not _THEOLOGY_SUBJECT_RE.search(q):
+        return True
+    words = q.split()
+    return bool(len(words) <= 3 and not _THEOLOGY_SUBJECT_RE.search(q))
+
+
+def extract_relevant_context_turns(
+    question: str,
+    context: list[Any] | None,
+    topic_slug: str | None = None,
+) -> list[str]:
+    """Return recent question texts only for follow-ups on the same topic."""
+    if not context or not is_followup_question(question):
+        return []
+
+    relevant: list[str] = []
+    for q in context[-2:]:
+        q_text = getattr(q, "question_text", str(q)).strip()
+        if not q_text:
+            continue
+        q_topic = getattr(q, "topic_slug", None)
+        if (
+            topic_slug
+            and topic_slug != "lainnya"
+            and q_topic
+            and q_topic != "lainnya"
+            and q_topic != topic_slug
+        ):
+            continue
+        relevant.append(q_text)
+    return relevant
 
 
 @dataclass(frozen=True)
@@ -70,43 +127,31 @@ class VectorRetriever:
         parts.append(question.strip())
         return " ".join(parts).strip()
 
-    async def retrieve(
+    async def _search_and_filter(
         self,
-        question: str,
-        recent_turns: list[str] | None = None,
-        override_threshold: float | None = None,
-        context: list[Any] | None = None,
-    ) -> RetrievalResult:
-        """Retrieve and rank top chunks for a question."""
-        threshold = (
-            override_threshold if override_threshold is not None else await self.get_threshold()
-        )
-        if context and recent_turns is None:
-            recent_turns = [getattr(q, "question_text", str(q)) for q in context]
-
-        query_text = self.build_query_text(question, recent_turns)
+        query_text: str,
+        valid_sites: frozenset[str],
+        threshold: float,
+    ) -> tuple[list[ArticleChunk], list[float]]:
         query_vector = await self.embedder.embed_query(query_text)
-
-        # 1. Gate 1: Strict query-time allowlist against 5 approved domains
-        valid_sites = approved_domains()
-
-        # 2. Retrieve top_k=8 nearest candidates from storage
         candidates = await self.storage.find_nearest_chunks(
             query_vector=query_vector,
-            limit=TOP_K_RETRIEVED,
+            limit=TOP_K_RETRIEVED + 6,
             site_allowlist=valid_sites,
             min_similarity=threshold,
         )
 
-        # 3. Apply per-article cap (max 2 chunks per article)
         surviving_chunks: list[ArticleChunk] = []
         surviving_scores: list[float] = []
         article_counts: dict[str, int] = {}
 
         for chunk, score in candidates:
-            # Redundant check: ensure site is on allowlist
             if chunk.site not in valid_sites:
                 logger.warning("Rejected off-allowlist chunk in retriever: %s", chunk.site)
+                continue
+
+            if is_non_article_page(chunk.url, chunk.title):
+                logger.debug("Skipped non-article index/category chunk: %s", chunk.url)
                 continue
 
             current_count = article_counts.get(chunk.article_id, 0)
@@ -119,6 +164,45 @@ class VectorRetriever:
 
             if len(surviving_chunks) >= MAX_RETURNED_CHUNKS:
                 break
+
+        return surviving_chunks, surviving_scores
+
+    async def retrieve(
+        self,
+        question: str,
+        recent_turns: list[str] | None = None,
+        override_threshold: float | None = None,
+        context: list[Any] | None = None,
+        topic_slug: str | None = None,
+    ) -> RetrievalResult:
+        """Retrieve and rank top chunks for a question."""
+        threshold = (
+            override_threshold if override_threshold is not None else await self.get_threshold()
+        )
+        if context and recent_turns is None:
+            recent_turns = extract_relevant_context_turns(
+                question, context, topic_slug=topic_slug
+            )
+
+        query_text = self.build_query_text(question, recent_turns)
+
+        # 1. Gate 1: Strict query-time allowlist against 5 approved domains
+        valid_sites = approved_domains()
+
+        # 2. Retrieve top candidates and apply per-article cap
+        surviving_chunks, surviving_scores = await self._search_and_filter(
+            query_text, valid_sites, threshold
+        )
+
+        # Fallback: if recent_turns diluted the vector query and prevented grounding,
+        # retry with the standalone question alone.
+        if recent_turns and len(surviving_chunks) < MIN_SURVIVING_CHUNKS:
+            standalone_chunks, standalone_scores = await self._search_and_filter(
+                question.strip(), valid_sites, threshold
+            )
+            if len(standalone_chunks) > len(surviving_chunks):
+                surviving_chunks = standalone_chunks
+                surviving_scores = standalone_scores
 
         # 4. Evaluate minimum grounding signal
         has_grounding = len(surviving_chunks) >= MIN_SURVIVING_CHUNKS

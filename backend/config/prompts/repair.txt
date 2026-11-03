@@ -12,7 +12,8 @@ Jawaban Anda sebelumnya:
 PETUNJUK PERBAIKAN:
 - Gunakan HANYA sebutan "Allah" dan "Isa Al-Masih". JANGAN PERNAH memakai kata "Tuhan" atau "Yesus".
 - Jika terdapat pelanggaran rujukan Al-Quran (misalnya tidak di awal teks atau kurang rujukan Alkitab), pindahkan rujukan Al-Quran ke kalimat pembuka (25% pertama teks) dan sertakan minimal 2 rujukan ayat Kitab Suci/Alkitab, ATAU cukup hapus rujukan Al-Quran tersebut.
-- Pastikan panjang jawaban antara 25 sampai 250 kata.
+- Pastikan panjang jawaban antara 25 sampai 350 kata.
+- Pastikan fokus utama dan nasihat teologis berpusat pada ajaran Kitab Suci/Alkitab dan Isa Al-Masih (minimal 60–75% dari isi jawaban), bukan berpusat pada nasihat Al-Quran.
 - Jangan mengubah makna atau menambah informasi dari luar kutipan yang sudah diberikan.
 
 Kembalikan HANYA format JSON persis seperti ini:

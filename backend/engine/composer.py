@@ -11,16 +11,35 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from config import get_settings
 from config.loader import prompt
+from engine.retriever import is_followup_question
 from engine.validators import ValidatorFailure, format_failures_for_repair
 from models.schemas import ArticleChunk, Question
 from providers.llm import LLMProvider, get_llm
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_answer_terminology(text: str) -> str:
+    """Strictly map Yesus/Jesus -> Isa Al-Masih and Tuhan/TUHAN -> Allah in AI answers."""
+    if not text:
+        return text
+    out = re.sub(
+        r"\b(?:Tuhan\s+)?(?:Yesus|Jesus)(?:\s+(?:Kristus|Christ|Al-Masih))?\b",
+        "Isa Al-Masih",
+        text,
+        flags=re.IGNORECASE,
+    )
+    out = re.sub(r"\b(?:Tuhan|TUHAN)\s+Isa(?:\s+Al-Masih)?\b", "Isa Al-Masih", out)
+    out = re.sub(r"\b(?:Tuhan|TUHAN)\s+Allah\b", "Allah", out)
+    out = re.sub(r"\b(?:Tuhan|TUHAN)\b", "Allah", out)
+    out = re.sub(r"\bIsa\s+Al-Masih(?:\s+Al-Masih)+\b", "Isa Al-Masih", out, flags=re.IGNORECASE)
+    return out
 
 
 @dataclass
@@ -54,22 +73,46 @@ class AnswerComposer:
             rendered.append(f"[{i}] {c.title}\n{c.text.strip()}")
         return "\n\n".join(rendered)
 
-    def _render_recent_turns(self, context: list[Question] | None) -> str:
+    def _render_recent_turns(
+        self,
+        context: list[Question] | None,
+        question: str = "",
+        topic_slug: str | None = None,
+    ) -> str:
         if not context:
             return "(Tidak ada percakapan sebelumnya)"
+        # If the user asks a standalone question (not a follow-up), only include
+        # recent turns that share the same topic_slug so previous topics (e.g. fasting)
+        # do not bleed into new topics (e.g. identity of Isa or Trinity).
+        followup = is_followup_question(question) if question else True
         turns = []
         for q in context[-2:]:
+            q_topic = getattr(q, "topic_slug", None)
+            if not followup:
+                if (
+                    topic_slug
+                    and topic_slug != "lainnya"
+                    and q_topic
+                    and q_topic != topic_slug
+                ):
+                    continue
+                if not topic_slug or topic_slug == "lainnya":
+                    continue
             turns.append(f"User: {q.question_text}")
             if q.answer_text:
                 turns.append(f"Tanya Iman: {q.answer_text[:150]}...")
-        return "\n".join(turns)
+        return "\n".join(turns) if turns else "(Tidak ada percakapan sebelumnya pada topik ini)"
 
     def _render_composer_system(
-        self, chunks: list[ArticleChunk], question: str, context: list[Question] | None
+        self,
+        chunks: list[ArticleChunk],
+        question: str,
+        context: list[Question] | None,
+        topic_slug: str | None = None,
     ) -> str:
         base = prompt("composer")
         passages_text = self._render_passages(chunks)
-        turns_text = self._render_recent_turns(context)
+        turns_text = self._render_recent_turns(context, question=question, topic_slug=topic_slug)
         return (
             base.replace("{passages}", passages_text)
             .replace("{question}", question.strip())
@@ -81,7 +124,7 @@ class AnswerComposer:
 
         try:
             raw = await asyncio.wait_for(
-                primary.complete_json(system, user, max_tokens=700, temperature=0.4),
+                primary.complete_json(system, user, max_tokens=1000, temperature=0.4),
                 timeout=self.timeout,
             )
             return raw, primary.name
@@ -93,7 +136,7 @@ class AnswerComposer:
             )
             fallback = self.fallback_llm or get_llm(fallback=True)
             raw = await asyncio.wait_for(
-                fallback.complete_json(system, user, max_tokens=700, temperature=0.4),
+                fallback.complete_json(system, user, max_tokens=1000, temperature=0.4),
                 timeout=self.timeout,
             )
             return raw, fallback.name
@@ -103,9 +146,10 @@ class AnswerComposer:
         question: str,
         chunks: list[ArticleChunk],
         context: list[Question] | None = None,
+        topic_slug: str | None = None,
     ) -> ComposerResult:
         settings = get_settings()
-        system = self._render_composer_system(chunks, question, context)
+        system = self._render_composer_system(chunks, question, context, topic_slug=topic_slug)
         user = (
             f"Silakan jawab pertanyaan berikut berdasarkan kutipan yang diberikan: "
             f"'{question.strip()}'"
@@ -156,6 +200,8 @@ class AnswerComposer:
             or raw.get("text")
             or ""
         ).strip()
+        if answer and not model_name.startswith("fake"):
+            answer = normalize_answer_terminology(answer)
         used_raw = raw.get("used_passages") or raw.get("passages") or default_used_passages or [1]
         used_passages = [int(x) for x in used_raw if isinstance(x, (int, str)) and str(x).isdigit()]
         if not used_passages and default_used_passages:

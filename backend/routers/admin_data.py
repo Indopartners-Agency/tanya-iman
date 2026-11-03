@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from config.loader import approved_domains
 from config.loader import topics as get_canonical_topics
 from engine.validators import _BIBLE_RE, _QURAN_RE, ComplianceValidator
+from ingestion.crawler import is_non_article_page
 from models import AdminAuditLog, AdminUser, Citation, SystemConfig
 from models.enums import AdminRole, AnswerSource, ArticleStatus, ChunkDecision, ValidatorCode
 from routers.admin_auth import require_admin
@@ -37,7 +38,7 @@ from services.clustering import (
 from services.clustering import (
     rename_cluster as service_rename_cluster,
 )
-from services.text import count_words
+from services.text import MAX_WORDS, MIN_WORDS, count_words
 
 logger = logging.getLogger(__name__)
 
@@ -654,6 +655,8 @@ async def list_corpus_articles(
     for a in articles:
         if a.site not in allowed:
             continue
+        if is_non_article_page(a.url, a.title):
+            continue
         if q and q.lower() not in a.title.lower() and q.lower() not in a.site.lower():
             continue
         if a.url in seen_urls:
@@ -674,6 +677,8 @@ async def list_corpus_articles(
         if hasattr(storage, "_chunks_store"):
             for chunk in getattr(storage, "_chunks_store", {}).values():
                 if chunk.site not in allowed or not chunk.is_retrievable:
+                    continue
+                if is_non_article_page(chunk.url, chunk.title):
                     continue
                 if site and chunk.site != site:
                     continue
@@ -704,6 +709,8 @@ async def list_corpus_articles(
                     c_url = data.get("url", "")
                     c_title = data.get("title", "")
                     if c_site not in allowed or not data.get("is_retrievable", True):
+                        continue
+                    if is_non_article_page(c_url, c_title):
                         continue
                     if site and c_site != site:
                         continue
@@ -1043,7 +1050,7 @@ async def get_question_detail(
             code="V1",
             label="Panjang",
             pass_=v1_pass,
-            measured=f"{word_count} kata (batas 25–250)",
+            measured=f"{word_count} kata (batas {MIN_WORDS}–{MAX_WORDS})",
             failure_codes=v1_codes,
         ),
         ValidatorDetail(

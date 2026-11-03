@@ -16,7 +16,7 @@
 const WORD = /[\p{L}\p{N}]+(?:[-'\u2019][\p{L}\p{N}]+)*/gu
 
 export const MIN_WORDS = 25
-export const MAX_WORDS = 250
+export const MAX_WORDS = 350
 
 export function countWords(text: string): number {
   return (text ?? '').match(WORD)?.length ?? 0

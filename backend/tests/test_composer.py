@@ -122,3 +122,18 @@ async def test_composer_repair_renders_prompt():
     assert "Panjang jawaban 20 kata" in system_text
     assert "Jawaban pendek" in system_text
     assert res.answer == "Jawaban yang sudah diperbaiki memenuhi semua syarat iman."
+
+
+def test_normalize_answer_terminology():
+    from engine.composer import normalize_answer_terminology
+
+    raw = (
+        "Dalam kutipan tersebut, Yesus Kristus dan Tuhan Yesus mengajarkan kasih "
+        "kepada Tuhan Allah dan firman TUHAN."
+    )
+    cleaned = normalize_answer_terminology(raw)
+    assert "Yesus" not in cleaned
+    assert "Tuhan" not in cleaned
+    assert "TUHAN" not in cleaned
+    assert "Isa Al-Masih" in cleaned
+    assert "Allah" in cleaned

@@ -104,10 +104,13 @@ class HTMLContentExtractor(HTMLParser):
             attrs_dict = dict(attrs)
             class_val = attrs_dict.get("class") or ""
             id_val = attrs_dict.get("id") or ""
-            if "content-sidebar" not in class_val and "has-sidebar" not in class_val:
-                if BOILERPLATE_PATTERN.search(class_val) or BOILERPLATE_PATTERN.search(id_val):
-                    self._ignored_stack.append(tag_lower)
-                    return
+            if (
+                "content-sidebar" not in class_val
+                and "has-sidebar" not in class_val
+                and (BOILERPLATE_PATTERN.search(class_val) or BOILERPLATE_PATTERN.search(id_val))
+            ):
+                self._ignored_stack.append(tag_lower)
+                return
 
         if tag_lower == "title":
             self._in_title = True
@@ -186,6 +189,103 @@ def is_approved_url(url: str, allowlist: frozenset[str] | None = None) -> bool:
     domains = allowlist if allowlist is not None else approved_domains()
     domain = extract_domain(url)
     return domain in domains
+
+
+_NON_ARTICLE_PATH_SEGMENTS = (
+    "/tag/",
+    "/category/",
+    "/kategori/",
+    "/page/",
+    "/author/",
+    "/search/",
+    "/feed/",
+    "/wp-json/",
+    "/wp-admin/",
+    "/wp-content/",
+    "/maksud-situs-ini",
+    "/daftar-artikel",
+    "/daftar-topik",
+    "/hubungi-kami",
+    "/tentang-kami",
+    "/kontak-email",
+    "/kebijakan-privasi",
+    "/privacy-policy",
+    "/kebijakan-pengelola",
+    "/kebijaksanaan-isa-dan-islam",
+    "/terima-kasih",
+    "/google-search",
+    "/syndication",
+    "/front-page/",
+    "/situs-alkitab",
+    "/situs-lain",
+    "/audio-alkitab",
+    "/aplikasi-kitab-tzi",
+    "/buletin-berkala",
+    "/seri-pertanyaan-terpopuler",
+)
+
+_NON_ARTICLE_EXACT_PATHS = frozenset(
+    [
+        "/",
+        "/email",
+        "/infographic",
+        "/infographic-isa-dan-al-fatihah",
+        "/isa-dan-al-quran-dan-pembalasan-email",
+        "/isa-dan-islam",
+        "/isa-dan-islam-studi",
+        "/kitab-suci",
+        "/mengenal-isa-mendalam",
+        "/pelajari-isa-al-masih",
+    ]
+)
+
+_NON_ARTICLE_TITLES = frozenset(
+    [
+        "archives",
+        "arsip",
+        "daftar artikel",
+        "daftar artikel-artikel dalam situs isa dan islam",
+        "daftar topik",
+        "tentang kami",
+        "hubungi kami",
+        "kontak email",
+        "maksud situs ini",
+        "kebijakan privasi",
+        "privacy policy",
+        "pencarian google",
+        "syndication",
+    ]
+)
+
+
+def is_non_article_page(url: str, title: str = "") -> bool:
+    """Return True if URL or title represents an index, category, archive, or utility page."""
+    if not url:
+        return True
+    parsed = urlparse(url if "://" in url else f"https://{url}")
+    path = (parsed.path or "/").rstrip("/").lower() or "/"
+
+    if path in _NON_ARTICLE_EXACT_PATHS:
+        return True
+
+    if any(seg in path for seg in _NON_ARTICLE_PATH_SEGMENTS):
+        return True
+
+    # Single-segment category archive slugs ending in -infographic (e.g. /alkitab-infographic)
+    # whereas actual infographic posts have two segments (/infographic/slug-artikel).
+    if path.count("/") == 1 and path.endswith("-infographic"):
+        return True
+
+    if title:
+        t_low = title.strip().lower()
+        if (
+            t_low.endswith(" archives")
+            or t_low.endswith(" arsip")
+            or t_low in _NON_ARTICLE_TITLES
+        ):
+            return True
+
+    return False
 
 
 def stable_article_id(url: str) -> str:
@@ -325,6 +425,10 @@ class Crawler:
         can_url = canonicalize_url(url)
         domain = extract_domain(can_url)
 
+        if is_non_article_page(can_url):
+            logger.debug("Dropped non-article index/category URL: %s", can_url)
+            return None, False
+
         if self.respect_robots_txt:
             can_fetch = await self.robots_cache.can_fetch(can_url, self.client)
             if not can_fetch:
@@ -334,6 +438,10 @@ class Crawler:
         parser = HTMLContentExtractor()
         parser.feed(html)
         title, clean_text = parser.get_result()
+
+        if is_non_article_page(can_url, title):
+            logger.debug("Dropped archive/index page by title '%s': %s", title, can_url)
+            return None, False
 
         if not clean_text:
             logger.debug("No extractable content for: %s", can_url)

@@ -17,12 +17,20 @@ import httpx
 
 from config.loader import approved_sites
 from ingestion.chunker import ArticleChunker
-from ingestion.crawler import Crawler, parse_sitemap_xml
+from ingestion.crawler import Crawler, is_non_article_page, parse_sitemap_xml
 from ingestion.embedder import CorpusEmbedder, get_embedder
 from storage import get_storage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("ingestion.run")
+
+_IGNORED_SITEMAP_TYPES = (
+    "category-sitemap",
+    "post_tag-sitemap",
+    "tag-sitemap",
+    "author-sitemap",
+    "page-sitemap",
+)
 
 
 async def discover_urls_from_sitemap(
@@ -44,15 +52,19 @@ async def discover_urls_from_sitemap(
     resolved_urls: list[str] = []
 
     for u in raw_urls:
-        if u.endswith(".xml"):
-            if "post-sitemap" in u or "sitemap" in u:
+        u_low = u.lower()
+        if u_low.endswith(".xml"):
+            if any(ignored in u_low for ignored in _IGNORED_SITEMAP_TYPES):
+                logger.info("Skipping non-post sitemap: %s", u)
+                continue
+            if "post-sitemap" in u_low or "sitemap" in u_low:
                 sub_urls = await discover_urls_from_sitemap(client, u, user_agent)
                 resolved_urls.extend(sub_urls)
         else:
             if not any(
-                u.lower().endswith(ext)
+                u_low.endswith(ext)
                 for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf", ".svg")
-            ):
+            ) and not is_non_article_page(u):
                 resolved_urls.append(u)
 
     return list(dict.fromkeys(resolved_urls))
@@ -116,14 +128,13 @@ async def run_ingestion(
 
                         if dry_run:
                             logger.info(
-                                "[DRY RUN] Would index %d chunks (%d flagged) for %s",
+                                "[DRY RUN] Would index %d chunks for %s",
                                 len(chunk_res.chunks),
-                                len(chunk_res.flagged),
                                 url,
                             )
                         else:
                             written = await corpus_embedder.upsert_article_chunks(
-                                article, chunk_res.chunks, chunk_res.flagged
+                                article, chunk_res.chunks, []
                             )
                             total_chunks_written += written
                             total_articles_written += 1

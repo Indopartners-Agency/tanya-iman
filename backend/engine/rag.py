@@ -104,7 +104,16 @@ class RAGEngine(AnswerEngine):
             )
 
         # Step 3: Vector Retrieval & Grounding Evaluation (F-15, F-29, AI Spec 6)
-        retrieval = await self.retriever.retrieve(request.question_text, context=request.context)
+        try:
+            retrieval = await self.retriever.retrieve(
+                request.question_text,
+                context=request.context,
+                topic_slug=class_res.topic_slug,
+            )
+        except TypeError:
+            retrieval = await self.retriever.retrieve(
+                request.question_text, context=request.context
+            )
 
         if not retrieval.has_grounding:
             return EngineResult(
@@ -119,7 +128,17 @@ class RAGEngine(AnswerEngine):
         passages = retrieval.chunks[:4]
 
         # Step 4: Answer Composer (F-11 through F-14, AI Spec 7)
-        comp_res = await self.composer.compose(request.question_text, passages, request.context)
+        try:
+            comp_res = await self.composer.compose(
+                request.question_text,
+                passages,
+                request.context,
+                topic_slug=class_res.topic_slug,
+            )
+        except TypeError:
+            comp_res = await self.composer.compose(
+                request.question_text, passages, request.context
+            )
 
         # Assemble citations from used_passages indices (up to 2 citations per F-14)
         citations = self._assemble_citations(passages, comp_res.used_passages)

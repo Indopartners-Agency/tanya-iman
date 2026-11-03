@@ -35,16 +35,16 @@ def test_v1_length_validator():
     res_25 = validator.validate(text_25)
     assert ValidatorCode.v1_too_short not in res_25.codes
 
-    # 250 words
-    text_250 = " ".join(["kata"] * 249) + " Allah"
-    res_250 = validator.validate(text_250)
-    assert ValidatorCode.v1_too_long not in res_250.codes
+    # 350 words
+    text_350 = " ".join(["kata"] * 349) + " Allah"
+    res_350 = validator.validate(text_350)
+    assert ValidatorCode.v1_too_long not in res_350.codes
 
-    # 251 words
-    text_251 = " ".join(["kata"] * 250) + " Allah"
-    res_251 = validator.validate(text_251)
-    assert not res_251.valid
-    assert ValidatorCode.v1_too_long in res_251.codes
+    # 351 words
+    text_351 = " ".join(["kata"] * 350) + " Allah"
+    res_351 = validator.validate(text_351)
+    assert not res_351.valid
+    assert ValidatorCode.v1_too_long in res_351.codes
 
 
 def test_v2_terminology_validator():

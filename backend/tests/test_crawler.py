@@ -203,3 +203,27 @@ def test_canonicalize_url():
         == "https://isadanislam.org/kasih"
     )
     assert canonicalize_url("http://ISADANISLAM.ORG/") == "http://isadanislam.org/"
+
+
+@pytest.mark.asyncio
+async def test_non_article_index_and_category_pages_dropped():
+    from ingestion.crawler import is_non_article_page
+
+    storage = MemoryStorage()
+    crawler = Crawler(storage=storage)
+
+    assert is_non_article_page("https://isadanislam.org/maksud-situs-ini/daftar-artikel")
+    assert is_non_article_page("https://isadanislam.org/alkitab-infographic")
+    assert is_non_article_page("https://isadanalquran.com/tag/puasa")
+    assert is_non_article_page("https://isadanislam.org/puasa", "Puasa Arsip")
+    assert not is_non_article_page(
+        "https://isadanislam.org/infographic/3-kunci-berhasil-puasa-ramadan-menurut-isa-al-masih",
+        "3 Kunci Berhasil Puasa Ramadan Menurut Isa Al-Masih",
+    )
+
+    art, changed = await crawler.ingest_html(
+        "https://isadanislam.org/maksud-situs-ini/daftar-artikel",
+        "<html><head><title>Daftar Artikel</title></head><body><p>Index</p></body></html>",
+    )
+    assert art is None
+    assert changed is False

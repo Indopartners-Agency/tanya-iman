@@ -41,6 +41,7 @@ Tetapkan juga satu topik dari daftar berikut, atau "lainnya"
 
 Jika sebuah pertanyaan cocok untuk dua topik, pilih topik teologis yang
 paling dekat dengan isi pertanyaan itu, bukan suasana perasaannya.
+Nilai PERTANYAAN saat ini secara mandiri terlebih dahulu. Gunakan KONTEKS PERCAKAPAN hanya jika pertanyaan saat ini merupakan kalimat lanjutan singkat (misalnya "Mengapa begitu?", "Lalu apa jaminannya?") yang merujuk langsung pada giliran sebelumnya. Pengguna bebas berganti topik iman kapan saja di dalam sesi yang sama.
 
 Kembalikan JSON:
 {"relevance": "theology" | "emotional_only" | "irrelevant" | "ambiguous",

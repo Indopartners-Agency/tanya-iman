@@ -19,7 +19,7 @@ import re
 _WORD = re.compile(r"[^\W_]+(?:[-'\u2019][^\W_]+)*", re.UNICODE)
 
 MIN_WORDS = 25
-MAX_WORDS = 250
+MAX_WORDS = 350
 
 
 def count_words(text: str) -> int:
@@ -32,5 +32,5 @@ def count_words(text: str) -> int:
 
 
 def within_length_bounds(text: str) -> bool:
-    """F-11: 25 <= words <= 250."""
+    """F-11: 25 <= words <= 350."""
     return MIN_WORDS <= count_words(text) <= MAX_WORDS

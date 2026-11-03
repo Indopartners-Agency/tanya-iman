@@ -202,3 +202,89 @@ async def test_query_includes_recent_turns():
     assert "Apa yang diajarkan Isa tentang keselamatan?" in query
     assert "Isa mengajarkan bahwa Dialah jalan kebenaran dan hidup." in query
     assert "Lalu apa jaminannya?" in query
+
+
+async def test_multi_topic_session_does_not_pollute_standalone_question():
+    from engine.retriever import extract_relevant_context_turns, is_followup_question
+    from models.enums import AnswerSource
+    from models.schemas import Question
+
+    # Standalone questions on new topics should NOT pull in prior fasting turns
+    assert is_followup_question("Apakah orang Kristen menyembah 3 tuhan?") is False
+    assert is_followup_question("Siapakah Isa?") is False
+    assert is_followup_question("Bagaimana cara berpuasa?") is False
+
+    # Dependent follow-ups SHOULD be recognized as follow-ups
+    assert is_followup_question("Lalu apa jaminannya?") is True
+    assert is_followup_question("Mengapa demikian?") is True
+
+    prior_q = Question(
+        id="q_fasting",
+        session_id="s1",
+        uid="u1",
+        question_text="Bagaimana pandangan tentang puasa?",
+        answer_text="Puasa dalam ajaran Isa Al-Masih...",
+        answer_source=AnswerSource.generated,
+        topic_slug="ibadah-dan-doa",
+        created_at=datetime.now(UTC),
+    )
+
+    # When switching to a standalone topic, context turns are excluded from vector query
+    turns_standalone = extract_relevant_context_turns(
+        "Siapakah Isa?", [prior_q], topic_slug="identitas-isa"
+    )
+    assert turns_standalone == []
+
+    # When asking a follow-up on the same topic, context turns are preserved
+    turns_followup = extract_relevant_context_turns(
+        "Lalu apa jaminannya?", [prior_q], topic_slug="ibadah-dan-doa"
+    )
+    assert turns_followup == ["Bagaimana pandangan tentang puasa?"]
+
+
+async def test_retriever_skips_index_and_category_chunks():
+    storage = MemoryStorage()
+    embedder = DeterministicEmbedder()
+    await _seed_corpus(storage, embedder)
+
+    now = datetime.now(UTC)
+    vec = await embedder.embed_query(
+        "Bagaimana saya memperoleh kasih dan pengampunan dosa dari Isa Al-Masih?"
+    )
+    index_chunk = ArticleChunk(
+        id="index_chunk_1",
+        article_id="art_index",
+        site="isadanislam.org",
+        url="https://isadanislam.org/maksud-situs-ini/daftar-artikel",
+        title="Daftar Artikel-artikel dalam situs Isa dan Islam",
+        chunk_index=0,
+        text="Daftar seluruh artikel tentang kasih dan pengampunan dosa.",
+        embedding=vec,
+        token_count=50,
+        is_retrievable=True,
+        created_at=now,
+    )
+    cat_chunk = ArticleChunk(
+        id="cat_chunk_1",
+        article_id="art_cat",
+        site="isadanislam.org",
+        url="https://isadanislam.org/alkitab-infographic",
+        title="Alkitab Arsip",
+        chunk_index=0,
+        text="Arsip kategori alkitab infographic tentang kasih.",
+        embedding=vec,
+        token_count=50,
+        is_retrievable=True,
+        created_at=now,
+    )
+    await storage.save_chunk(index_chunk)
+    await storage.save_chunk(cat_chunk)
+
+    retriever = VectorRetriever(storage=storage, embedder=embedder, default_threshold=0.20)
+    result = await retriever.retrieve(
+        question="Bagaimana saya memperoleh kasih dan pengampunan dosa dari Isa Al-Masih?"
+    )
+
+    cited_urls = [c.url for c in result.citations]
+    assert "https://isadanislam.org/maksud-situs-ini/daftar-artikel" not in cited_urls
+    assert "https://isadanislam.org/alkitab-infographic" not in cited_urls
